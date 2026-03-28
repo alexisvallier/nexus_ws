@@ -97,6 +97,8 @@ class TrackingNode(Node):
         # or the height of the object
         # if np.linalg.norm(center_points) > 3 or center_points[2] > 0.7:
         #     return
+        if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
+            return
         
         try:
             # Transform the center point from the camera frame to the world frame
@@ -122,6 +124,8 @@ class TrackingNode(Node):
         # or the height of the object
         # if np.linalg.norm(center_points) > 3 or center_points[2] > 0.7:
         #     return
+        if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
+            return
         
         try:
             # Transform the center point from the camera frame to the world frame
@@ -146,13 +150,22 @@ class TrackingNode(Node):
             robot_world_y = transform.transform.translation.y
             robot_world_z = transform.transform.translation.z
             robot_world_R = q2R([transform.transform.rotation.w, transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z])
-            obstacle_pose = robot_world_R@self.obs_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
-            goal_pose = robot_world_R@self.goal_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
+            obstacle_pose = None
+            goal_pose = None
+
+            if self.obs_pose is not None:
+                obstacle_pose = robot_world_R @ self.obs_pose + np.array([robot_world_x, robot_world_y, robot_world_z])
+
+            if self.goal_pose is not None:
+                goal_pose = robot_world_R @ self.goal_pose + np.array([robot_world_x, robot_world_y, robot_world_z])
+
+            #obstacle_pose = robot_world_R@self.obs_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
+            #goal_pose = robot_world_R@self.goal_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
     
         
         except TransformException as e:
             self.get_logger().error('Transform error: ' + str(e))
-            return
+            return None, None
         
         return obstacle_pose, goal_pose
     
@@ -164,22 +177,31 @@ class TrackingNode(Node):
         # and update the command velocity accordingly
         if self.goal_pose is None:
             cmd_vel = Twist()
-            cmd_vel.linear.x = 0.0
-            cmd_vel.angular.z = 0.0
+            #cmd_vel.linear.x = 0.0
+            #cmd_vel.angular.z = 0.0
             self.pub_control_cmd.publish(cmd_vel)
             return
         
         # Get the current object pose in the robot base_footprint frame
-        current_obs_pose, current_goal_pose = self.get_current_poses()
+        poses = self.get_current_poses()
+
+        if poses is None:
+            return
+
+        current_obs_pose, current_goal_pose = poses
+
+        if current_goal_pose is None:
+            return
+
         
         # TODO: get the control velocity command
-        cmd_vel = self.controller()
+        cmd_vel = self.controller(current_obs_pose, current_goal_pose)
         
         # publish the control command
         self.pub_control_cmd.publish(cmd_vel)
         #################################################
     
-    def controller(self):
+    def controller(self, obs_pose, goal_pose):
         # Instructions: You can implement your own control algorithm here
         # feel free to modify the code structure, add more parameters, more input variables for the function, etc.
         
@@ -187,9 +209,49 @@ class TrackingNode(Node):
         
         # TODO: Update the control velocity command
         cmd_vel = Twist()
-        cmd_vel.linear.x = 0
-        cmd_vel.linear.y = 0
-        cmd_vel.angular.z = 0
+
+        if goal_pose is None:
+            return Twist()
+
+        #Get poses
+        #current_obs_pose, current_goal_pose = self.get_current_poses()
+
+        #Goal position in robot frame
+        gx = goal_pose[0]
+        gy = goal_pose[1]
+
+        #Distance + angle to goal
+        dist = np.sqrt(gx**2 + gy**2)
+        angle = math.atan2(gy, gx)
+
+        #Gain
+        k_lin = 0.5
+        k_ang = 1.0
+
+        #Goal Tracking
+        cmd_vel.angular.z = k_ang * angle
+
+        forward_gain = max(0.2, 1.0 - abs(angle))
+        cmd_vel.linear.x = k_lin * dist * forward_gain
+
+        if dist < 0.3:
+            cmd_vel.linear.x *= dist / 0.3
+
+        #Obstacle Avoidance
+        if obs_pose is not None:
+            ox = obs_pose[0]
+            oy = obs_pose[1]
+            obs_dist = np.sqrt(ox**2 + oy**2)
+
+            if obs_dist < 0.6:
+                avoid_angle = math.atan2(oy,ox)
+
+                cmd_vel.angular.z += -1.0 * (0.6 - obs_dist) * avoid_angle
+                cmd_vel.linear.x *= max(0.2, obs_dist / 0.6)
+
+        cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
+        cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
+
         return cmd_vel
     
         ############################################
