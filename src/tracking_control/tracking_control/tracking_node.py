@@ -220,7 +220,7 @@ class TrackingNode(Node):
         k_ang = 1.0
         
         # State machine ( bug 0 )
-
+        
         # moving toward goal
         if self.state == "GOAL":
             if obs_pose is not None:
@@ -248,16 +248,18 @@ class TrackingNode(Node):
             if obs_pose is None:
                 self.state = "GOAL"
                 return Twist()
-            else:
-                obs_angle = np.arctan2(oy,ox)
-                
+
+            obs_angle = np.arctan2(oy, ox)
             des_theta = obs_angle + np.pi/2
 
-            # move perpendicular to obstacle
-            cmd_vel.angular.z = 1.5 * des_theta
-            cmd_vel.linear.x = 0.2
+            gain = 0.8 - obs_dist
 
-            # may need another condition to change the state here
+            # move perpendicular to obstacle
+            cmd_vel.linear.x = 0.8 * gain * des_theta
+            cmd_vel.linear.y = 0.8 * gain * des_theta
+
+            if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
+                    self.state = "GOAL"
 
         elif self.state == "RETURN":
             # need to do opposite of current pose (go to robot frame origin)
@@ -293,10 +295,11 @@ class TrackingNode(Node):
             des_theta = obs_angle + np.pi/2
 
             # move perpendicular to obstacle
-            cmd_vel.angular.z = 1.5 * des_theta
-            cmd_vel.linear.x = 0.2
+            cmd_vel.linear.x = 0.8 * gain * des_theta
+            cmd_vel.linear.y = 0.8 * gain * des_theta
 
-            # may need another condition to change the state here
+            if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
+                self.state = "RETURN"
         
         elif self.state == "DONE":
             return Twist()
