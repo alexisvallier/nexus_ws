@@ -68,6 +68,11 @@ class TrackingNode(Node):
         # Current object pose
         self.obs_pose = None
         self.goal_pose = None
+        # Initialize start pose for return
+        self.start_pose = None
+
+        # State for control
+        self.state = "GOAL"
         
         # ROS parameters
         self.declare_parameter('world_frame_id', 'odom')
@@ -95,8 +100,6 @@ class TrackingNode(Node):
         # You can decide to filter the detected object pose here
         # For example, you can filter the pose based on the distance from the camera
         # or the height of the object
-        # if np.linalg.norm(center_points) > 3 or center_points[2] > 0.7:
-        #     return
         if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
             return
         
@@ -122,8 +125,6 @@ class TrackingNode(Node):
         # You can decide to filter the detected object pose here
         # For example, you can filter the pose based on the distance from the camera
         # or the height of the object
-        # if np.linalg.norm(center_points) > 3 or center_points[2] > 0.7:
-        #     return
         if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
             return
         
@@ -168,81 +169,142 @@ class TrackingNode(Node):
         # and update the command velocity accordingly
         if self.goal_pose is None:
             cmd_vel = Twist()
+            
             #cmd_vel.linear.x = 0.0
             #cmd_vel.angular.z = 0.0
             self.pub_control_cmd.publish(cmd_vel)
             return
         
         # Get the current object pose in the robot base_footprint frame
-        poses = self.get_current_poses()
-
-        if poses is None:
-            return
-
-        current_obs_pose, current_goal_pose = poses
-
-        if current_goal_pose is None:
-            return
-
+        current_obs_pose, current_goal_pose = self.get_current_poses()
         
         # TODO: get the control velocity command
-        cmd_vel = self.controller(current_obs_pose, current_goal_pose)
+        cmd_vel = self.controller()
         
         # publish the control command
         self.pub_control_cmd.publish(cmd_vel)
         #################################################
     
-    def controller(self, obs_pose, goal_pose):
+    def controller(self):
         # Instructions: You can implement your own control algorithm here
         # feel free to modify the code structure, add more parameters, more input variables for the function, etc.
         
         ########### Write your code here ###########
-        
-        # TODO: Update the control velocity command
         cmd_vel = Twist()
 
-        if goal_pose is None:
-            return Twist()
+        if self.start_pose is None:
+            self.start_pose = np.array([0.0,0.0])
 
-        #Get poses
-        #current_obs_pose, current_goal_pose = self.get_current_poses()
+        # Get poses
+        obs_pose, goal_pose = self.get_current_poses()
 
-        #Goal position in robot frame
+        # Goal position in robot frame
         gx = goal_pose[0]
         gy = goal_pose[1]
 
-        #Distance + angle to goal
-        dist = np.sqrt(gx**2 + gy**2)
-        angle = math.atan2(gy, gx)
+        # Distance + angle to goal
+        goal_dist = np.sqrt(gx**2 + gy**2)
+        angle = np.arctan2(gy, gx)
 
-        #Gain
-        k_lin = 0.5
-        k_ang = 1.0
-
-        #Goal Tracking
-        cmd_vel.angular.z = k_ang * angle
-
-        forward_gain = max(0.2, 1.0 - abs(angle))
-        cmd_vel.linear.x = k_lin * dist * forward_gain
-
-        if dist < 0.3:
-            cmd_vel.linear.x *= dist / 0.3
-
-        #Obstacle Avoidance
+        # Obstacle Position
+        ox, oy = None, None
+        obs_dist = None
+        
         if obs_pose is not None:
             ox = obs_pose[0]
             oy = obs_pose[1]
             obs_dist = np.sqrt(ox**2 + oy**2)
 
-            if obs_dist < 0.6:
-                avoid_angle = math.atan2(oy,ox)
+        # Gain
+        k_lin = 0.5
+        k_ang = 1.0
+        
+        # State machine ( bug 0 )
 
-                cmd_vel.angular.z += -1.0 * (0.6 - obs_dist) * avoid_angle
-                cmd_vel.linear.x *= max(0.2, obs_dist / 0.6)
+        # moving toward goal
+        if self.state == "GOAL":
+            if obs_pose is not None:
+                obs_angle = np.arctan2(oy,ox)
 
+                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
+                    # Decide direction once
+                    #self.avoid_direction = 1 if oy < 0 else -1
+                    self.state = "AVOID"
+
+            # goal reached
+            if goal_dist < 0.3:
+                self.state = "RETURN"
+                return Twist()
+        
+            # Goal Tracking
+            cmd_vel.angular.z = k_ang * angle
+    
+            forward_gain = max(0.2, 1.0 - abs(angle))
+            cmd_vel.linear.x = k_lin * goal_dist * forward_gain
+
+        # obstacle encountered
+        elif self.state == "AVOID":
+            # obstacle avoided
+            if obs_pose is None:
+                self.state = "GOAL"
+                return Twist()
+            else:
+                obs_angle = np.arctan2(oy,ox)
+                
+            des_theta = obs_angle + np.pi/2
+
+            # move perpendicular to obstacle
+            cmd_vel.angular.z = 1.5 * des_theta
+            cmd_vel.linear.x = 0.2
+
+            # may need another condition to change the state here
+
+        elif self.state == "RETURN":
+            # need to do opposite of current pose (go to robot frame origin)
+            home_dist = np.sqrt(gx**2 + gy**2)
+            home_angle = np.arctan2(-gy, -gx)
+
+            # avoid obstacle if needed
+            if obs_pose is not None:
+                obs_angle = np.arctan2(oy, ox)
+                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
+                    #self.avoid_direction = 1 if oy < 0 else -1
+                    self.state = "AVOID_RETURN"
+    
+            if home_dist < 0.3:
+                self.state = "DONE"
+                return Twist()
+
+            # Goal Tracking
+            cmd_vel.angular.z = k_ang * home_angle
+    
+            forward_gain = max(0.2, 1.0 - abs(home_angle))
+            cmd_vel.linear.x = k_lin * home_dist * forward_gain
+
+        elif self.state == "AVOIDR":
+
+            # obstacle avoided
+            if obs_pose is None:
+                self.state = "RETURN"
+                return Twist()
+            else:
+                obs_angle = np.arctan2(oy,ox)
+                
+            des_theta = obs_angle + np.pi/2
+
+            # move perpendicular to obstacle
+            cmd_vel.angular.z = 1.5 * des_theta
+            cmd_vel.linear.x = 0.2
+
+            # may need another condition to change the state here
+        
+        elif self.state == "DONE":
+            return Twist()
+            
+        # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
         cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
-
+        
         return cmd_vel
     
         ############################################
