@@ -193,15 +193,7 @@ class TrackingNode(Node):
         cmd_vel = Twist()
 
         if self.start_pose is None:
-            transform = self.tf_buffer.lookup_transform(
-                self.get_parameter('world_frame_id').value,
-                'base_footprint',
-                rclpy.time.Time()
-            )
-            self.start_pose = np.array([
-                transform.transform.translation.x,
-                transform.transform.translation.y
-            ])
+            self.start_pose = np.array([0.0,0.0])
 
         # Get poses
         obs_pose, goal_pose = self.get_current_poses()
@@ -249,7 +241,7 @@ class TrackingNode(Node):
     
             forward_gain = max(0.2, 1.0 - abs(angle))
             cmd_vel.linear.x = k_lin * goal_dist * forward_gain
-        
+
         # obstacle encountered
         elif self.state == "AVOID":
             # obstacle avoided
@@ -270,72 +262,26 @@ class TrackingNode(Node):
                     self.state = "GOAL"
 
         elif self.state == "RETURN":
-            odom_id = self.get_parameter('world_frame_id').value
-            transform = self.tf_buffer.lookup_transform(
-                odom_id,
-                'base_footprint',
-                rclpy.time.Time()
-            )
-            current_pos = np.array([
-                transform.transform.translation.x,
-                transform.transform.translation.y
-            ])
-
-            error = self.start_pose - current_pos
-
-            dist = np.linalg.norm(error)
-            angle = np.arctan2(error[1], error[0])
-        
-            if dist < 0.05:
-                self.state = "DONE"
-                return Twist()
+            # need to do opposite of current pose (go to robot frame origin)
+            home_dist = np.sqrt(gx**2 + gy**2)
+            home_angle = np.arctan2(-gy, -gx)
 
             # avoid obstacle if needed
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy, ox)
                 if abs(obs_angle) < 0.4 and obs_dist < 0.8:
                     #self.avoid_direction = 1 if oy < 0 else -1
-                    self.state = "AVOIDR"
-        
-            # Convert world error direction into robot frame
-            transform = self.tf_buffer.lookup_transform(
-                'base_footprint',
-                self.get_parameter('world_frame_id').value,
-                rclpy.time.Time()
-            )
-        
-            yaw = euler_from_quaternion([
-                transform.transform.rotation.w,
-                transform.transform.rotation.x,
-                transform.transform.rotation.y,
-                transform.transform.rotation.z
-            ])[2]
-        
-            # Rotate error into robot frame
-            R = np.array([
-                [np.cos(-yaw), -np.sin(-yaw)],
-                [np.sin(-yaw),  np.cos(-yaw)]
-            ])
-        
-            error_robot = R @ error
-        
-            # Control (omnidirectional)
-            cmd_vel.linear.x = k_lin * error_robot[0]
-            cmd_vel.linear.y = k_lin * error_robot[1]
-            
-            # need to do opposite of current pose (go to robot frame origin)
-            #home_dist = np.sqrt(gx**2 + gy**2)
-            #home_angle = np.arctan2(-gy, -gx)
+                    self.state = "AVOID_RETURN"
     
-            #if home_dist < 0.3:
-                #self.state = "DONE"
-                #return Twist()
+            if home_dist < 0.3:
+                self.state = "DONE"
+                return Twist()
 
             # Goal Tracking
-            #cmd_vel.angular.z = k_ang * home_angle
+            cmd_vel.angular.z = k_ang * home_angle
     
-            #forward_gain = max(0.2, 1.0 - abs(home_angle))
-            #cmd_vel.linear.x = k_lin * home_dist * forward_gain
+            forward_gain = max(0.2, 1.0 - abs(home_angle))
+            cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
 
