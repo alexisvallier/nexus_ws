@@ -242,7 +242,6 @@ class TrackingNode(Node):
             # goal reached
             if goal_dist < 0.3:
                 self.state = "RETURN"
-                return Twist()
         
             # Goal Tracking
             cmd_vel.angular.z = k_ang * angle
@@ -296,14 +295,23 @@ class TrackingNode(Node):
                 if abs(obs_angle) < 0.4 and obs_dist < 0.8:
                     #self.avoid_direction = 1 if oy < 0 else -1
                     self.state = "AVOIDR"
-        
-            # Convert world error direction into robot frame
+
+            # transforms
+            odom_id = self.get_parameter('world_frame_id').value
+
             transform = self.tf_buffer.lookup_transform(
+                odom_id,
                 'base_footprint',
-                self.get_parameter('world_frame_id').value,
                 rclpy.time.Time()
             )
-        
+            
+            # Current robot position (world frame)
+            current_pos = np.array([
+                transform.transform.translation.x,
+                transform.transform.translation.y
+            ])
+            
+            # Yaw (world frame)
             yaw = euler_from_quaternion([
                 transform.transform.rotation.w,
                 transform.transform.rotation.x,
@@ -311,13 +319,14 @@ class TrackingNode(Node):
                 transform.transform.rotation.z
             ])[2]
         
-            # Rotate error into robot frame
+            error = self.start_pose - current_pos
+
             R = np.array([
-                [np.cos(-yaw), -np.sin(-yaw)],
-                [np.sin(-yaw),  np.cos(-yaw)]
+                [np.cos(yaw), -np.sin(yaw)],
+                [np.sin(yaw),  np.cos(yaw)]
             ])
-        
-            error_robot = R @ error
+            
+            error_robot = R.T @ error
         
             # Control (omnidirectional)
             cmd_vel.linear.x = k_lin * error_robot[0]
@@ -347,6 +356,8 @@ class TrackingNode(Node):
                 obs_angle = np.arctan2(oy,ox)
                 
             des_theta = obs_angle + np.pi/2
+
+            gain = 0.8 - obs_dist
 
             # move perpendicular to obstacle
             cmd_vel.linear.x = 0.8 * gain * des_theta
