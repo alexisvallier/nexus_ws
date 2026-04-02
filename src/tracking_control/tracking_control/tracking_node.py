@@ -285,6 +285,10 @@ class TrackingNode(Node):
 
             dx_r = error_robot[0]
             dy_r = error_robot[1]
+
+            #testing values
+            dx_r = -1
+            dx_y = -1
             
             home_dist = np.sqrt(dx_r**2 + dy_r**2)
             home_angle = np.arctan2(dy_r, dx_r)
@@ -326,7 +330,8 @@ class TrackingNode(Node):
                 self.state = "RETURN"
         
         elif self.state == "DONE":
-            return Twist()
+            # test to see if it's going to done
+            cmd_vel.angular.z = -0.1
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
