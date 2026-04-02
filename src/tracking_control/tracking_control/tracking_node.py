@@ -230,7 +230,7 @@ class TrackingNode(Node):
         
         # moving toward goal
         if self.state == "GOAL":
-            print("Heading to goal")
+            self.get_logger().info('Heading to goal')
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
@@ -250,7 +250,7 @@ class TrackingNode(Node):
 
         # obstacle encountered
         elif self.state == "AVOID":
-            print("Avoiding obstacle")
+            self.get_logger().info('Avoiding obstacle')
             # obstacle avoided
             if obs_pose is None:
                 self.state = "GOAL"
@@ -270,7 +270,7 @@ class TrackingNode(Node):
                 self.state = "GOAL"
 
         elif self.state == "RETURN":
-            print("Returning to start")
+            self.get_logger().info('Returning to start')
             # need to do opposite of current pose (go to robot frame origin)
             # need to change this, without a goal pose in the camera it won't work
             # reassign gx and gy to the robot's position from the starting point
@@ -310,7 +310,7 @@ class TrackingNode(Node):
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
-            print("Avoiding obstacle on return")
+            self.get_logger().info('Avoiding obstacle on return')
 
             # obstacle avoided
             if obs_pose is None:
@@ -332,7 +332,7 @@ class TrackingNode(Node):
                 self.state = "RETURN"
         
         elif self.state == "DONE":
-            print("Complete")
+            self.get_logger().info('Complete')
             return Twist()
             
         # Saturation
