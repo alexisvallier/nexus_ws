@@ -70,6 +70,10 @@ class TrackingNode(Node):
         self.goal_pose = None
         # Initialize start pose for return
         self.start_pose = None
+        self.robot_world_x = None
+        self.robot_world_y = None
+        self.robot_world_z = None
+        self.robot_world_R = None
 
         # State for control
         self.state = "GOAL"
@@ -147,13 +151,13 @@ class TrackingNode(Node):
         try:
             # from base_footprint to odom
             transform = self.tf_buffer.lookup_transform('base_footprint', odom_id, rclpy.time.Time())
-            robot_world_x = transform.transform.translation.x
-            robot_world_y = transform.transform.translation.y
-            robot_world_z = transform.transform.translation.z
-            robot_world_R = q2R([transform.transform.rotation.w, transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z])
+            self.robot_world_x = transform.transform.translation.x
+            self.robot_world_y = transform.transform.translation.y
+            self.robot_world_z = transform.transform.translation.z
+            self.robot_world_R = q2R([transform.transform.rotation.w, transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z])
 
-            obstacle_pose = robot_world_R@self.obs_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
-            goal_pose = robot_world_R@self.goal_pose+np.array([robot_world_x,robot_world_y,robot_world_z])
+            obstacle_pose = self.robot_world_R@self.obs_pose+np.array([self.robot_world_x,self.robot_world_y,self.robot_world_z])
+            goal_pose = self.robot_world_R@self.goal_pose+np.array([self.robot_world_x,self.robot_world_y,self.robot_world_z])
         
         except TransformException as e:
             self.get_logger().error('Transform error: ' + str(e))
@@ -167,11 +171,10 @@ class TrackingNode(Node):
         # Now, the robot stops if the object is not detected
         # But, you may want to think about what to do in this case
         # and update the command velocity accordingly
-        if self.goal_pose is None:
-            cmd_vel = Twist()
-            
-            #cmd_vel.linear.x = 0.0
-            #cmd_vel.angular.z = 0.0
+        if (self.state == "GOAL") and (self.goal_pose is None):
+            cmd_vel = Twist() 
+            # spin to try to find goal again
+            cmd_vel.angular.z = -0.1
             self.pub_control_cmd.publish(cmd_vel)
             return
         
@@ -192,8 +195,12 @@ class TrackingNode(Node):
         ########### Write your code here ###########
         cmd_vel = Twist()
 
+        # set starting position
         if self.start_pose is None:
-            self.start_pose = np.array([0.0,0.0])
+            self.start_pose = np.array([
+                self.robot_world_x,
+                self.robot_world_y
+            ])
 
         # Get poses
         obs_pose, goal_pose = self.get_current_poses()
@@ -223,12 +230,12 @@ class TrackingNode(Node):
         
         # moving toward goal
         if self.state == "GOAL":
+            print("Heading to goal")
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
                 if abs(obs_angle) < 0.4 and obs_dist < 0.8:
                     # Decide direction once
-                    #self.avoid_direction = 1 if oy < 0 else -1
                     self.state = "AVOID"
 
             # goal reached
@@ -238,12 +245,12 @@ class TrackingNode(Node):
         
             # Goal Tracking
             cmd_vel.angular.z = k_ang * angle
-    
             forward_gain = max(0.2, 1.0 - abs(angle))
             cmd_vel.linear.x = k_lin * goal_dist * forward_gain
 
         # obstacle encountered
         elif self.state == "AVOID":
+            print("Avoiding obstacle")
             # obstacle avoided
             if obs_pose is None:
                 self.state = "GOAL"
@@ -255,23 +262,43 @@ class TrackingNode(Node):
             gain = 0.8 - obs_dist
 
             # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * des_theta
-            cmd_vel.linear.y = 0.8 * gain * des_theta
+            cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
+            cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
+            cmd_vel.angular.z = 0
 
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
-                    self.state = "GOAL"
+                self.state = "GOAL"
 
         elif self.state == "RETURN":
+            print("Returning to start")
             # need to do opposite of current pose (go to robot frame origin)
-            home_dist = np.sqrt(gx**2 + gy**2)
-            home_angle = np.arctan2(-gy, -gx)
+            # need to change this, without a goal pose in the camera it won't work
+            # reassign gx and gy to the robot's position from the starting point
+
+            #### New code ####
+            rx = self.robot_world_x
+            ry = self.robot_world_y
+            dx = self.start_pose[0] - rx
+            dy = self.start_pose[1] - ry
+
+            R_wr = self.robot_world_R
+            R_rw = R_wr.T                 
+
+            error_world = np.array([dx, dy, 0])
+            error_robot = R_rw @ error_world
+
+            dx_r = error_robot[0]
+            dy_r = error_robot[1]
+            
+            home_dist = np.sqrt(dx_r**2 + dy_r**2)
+            home_angle = np.arctan2(dy_r, dx_r)
+            ###################
 
             # avoid obstacle if needed
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy, ox)
                 if abs(obs_angle) < 0.4 and obs_dist < 0.8:
-                    #self.avoid_direction = 1 if oy < 0 else -1
-                    self.state = "AVOID_RETURN"
+                    self.state = "AVOIDR"
     
             if home_dist < 0.3:
                 self.state = "DONE"
@@ -279,11 +306,11 @@ class TrackingNode(Node):
 
             # Goal Tracking
             cmd_vel.angular.z = k_ang * home_angle
-    
             forward_gain = max(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
+            print("Avoiding obstacle on return")
 
             # obstacle avoided
             if obs_pose is None:
@@ -294,18 +321,23 @@ class TrackingNode(Node):
                 
             des_theta = obs_angle + np.pi/2
 
-            # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * des_theta
-            cmd_vel.linear.y = 0.8 * gain * des_theta
+            gain = 0.8 - obs_dist
 
+            # move perpendicular to obstacle
+            cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
+            cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
+            cmd_vel.angular.z = 0
+            
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
                 self.state = "RETURN"
         
         elif self.state == "DONE":
+            print("Complete")
             return Twist()
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
+        cmd_vel.linear.y = min(cmd_vel.linear.y, 0.5)
         cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
         
         return cmd_vel
