@@ -95,7 +95,7 @@ class TrackingNode(Node):
         self.timer = self.create_timer(0.01, self.timer_update)
     
     def detected_obs_pose_callback(self, msg):
-        #self.get_logger().info('Received Detected Object Pose')
+        self.get_logger().info('Received Detected Object Pose')
         
         odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
         center_points = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
@@ -120,7 +120,7 @@ class TrackingNode(Node):
         self.obs_pose = cp_world
 
     def detected_goal_pose_callback(self, msg):
-        #self.get_logger().info('Received Detected Object Pose')
+        self.get_logger().info('Received Detected Object Pose')
         
         odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
         center_points = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
@@ -230,6 +230,7 @@ class TrackingNode(Node):
         
         # moving toward goal
         if self.state == "GOAL":
+            self.get_logger().info('Goal State')
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
@@ -248,6 +249,7 @@ class TrackingNode(Node):
 
         # obstacle encountered
         elif self.state == "AVOID":
+            self.get_logger().info('Avoid')
             # obstacle avoided
             if obs_pose is None:
                 self.state = "GOAL"
