@@ -275,8 +275,10 @@ class TrackingNode(Node):
             # reassign gx and gy to the robot's position from the starting point
 
             #### New code ####
-            dx = -self.robot_world_x
-            dy = -self.robot_world_y
+            rx = self.robot_world_x
+            ry = self.robot_world_y
+            dx = rx - self.start_pose[0]
+            dy = ry - self.start_pose[1]
 
             R_wr = self.robot_world_R
             R_rw = R_wr.T                 
