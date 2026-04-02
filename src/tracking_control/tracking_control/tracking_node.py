@@ -331,7 +331,9 @@ class TrackingNode(Node):
         
         elif self.state == "DONE":
             self.get_logger().info('STATE: Done')
-            return Twist()
+            cmd_vel.linear.x = 0
+            cmd_vel.linear.y = 0
+            cmd_vel.angular.z = 0
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
