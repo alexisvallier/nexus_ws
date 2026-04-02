@@ -239,7 +239,7 @@ class TrackingNode(Node):
                     self.state = "AVOID"
 
             # goal reached
-            if goal_dist < 0.3:
+            if goal_dist < 0.4:
                 self.state = "RETURN"
         
             # Goal Tracking
@@ -288,10 +288,6 @@ class TrackingNode(Node):
 
             dx_r = error_robot[0]
             dy_r = error_robot[1]
-
-            #testing values
-            dx_r = -1
-            dx_y = -1
             
             home_dist = np.sqrt(dx_r**2 + dy_r**2)
             home_angle = np.arctan2(dy_r, dx_r)
@@ -335,8 +331,7 @@ class TrackingNode(Node):
         
         elif self.state == "DONE":
             self.get_logger().info('STATE: Done')
-            # test to see if it's going to done
-            cmd_vel.angular.z = 0.1
+            return Twist()
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
