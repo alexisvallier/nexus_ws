@@ -174,7 +174,7 @@ class TrackingNode(Node):
         if (self.state == "GOAL") and (self.goal_pose is None):
             cmd_vel = Twist() 
             # spin to try to find goal again
-            cmd_vel.angular.z = -0.1
+            cmd_vel.angular.z = 0.1
             self.pub_control_cmd.publish(cmd_vel)
             return
         
@@ -263,7 +263,7 @@ class TrackingNode(Node):
             # move perpendicular to obstacle
             cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
             cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
-            cmd_vel.angular.z = 0
+            cmd_vel.angular.z = 0.0
 
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
                 self.state = "GOAL"
@@ -326,14 +326,14 @@ class TrackingNode(Node):
             # move perpendicular to obstacle
             cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
             cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
-            cmd_vel.angular.z = 0
+            cmd_vel.angular.z = 0.0
             
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
                 self.state = "RETURN"
         
         elif self.state == "DONE":
             # test to see if it's going to done
-            cmd_vel.angular.z = -0.1
+            cmd_vel.angular.z = 0.1
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
