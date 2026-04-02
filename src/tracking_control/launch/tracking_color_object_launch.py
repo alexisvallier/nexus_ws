@@ -36,7 +36,6 @@ def generate_launch_description():
         executable='tracking_node',
         name='tracking_node',
         output="screen"
-        arguments=['--ros-args', '--log-level', 'debug']
     )
     
     return LaunchDescription([
