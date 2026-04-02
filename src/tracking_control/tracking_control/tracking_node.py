@@ -229,7 +229,7 @@ class TrackingNode(Node):
         # State machine ( bug 0 )
         
         # moving toward goal
-        if self.state == "GOAL"
+        if self.state == "GOAL":
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
