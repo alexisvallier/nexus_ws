@@ -224,7 +224,7 @@ class TrackingNode(Node):
 
         # Gain
         k_lin = 0.5
-        k_ang = 1.0
+        k_ang = 1.5
         
         # State machine ( bug 0 )
         
@@ -282,8 +282,6 @@ class TrackingNode(Node):
             dy = self.start_pose[1] - ry
 
             ##New Code - 04/03 ##
-            self.get_logger().info('STATE: Home dist: ')
-
             #self.get_logger().info(rx)
             #self.get_logger().info(ry)
             #self.get_logger().info(dx)
@@ -313,7 +311,7 @@ class TrackingNode(Node):
                 return Twist()
 
             # Goal Tracking
-            cmd_vel.angular.z = k_ang * home_angle * 2
+            cmd_vel.angular.z = np.clip(k_ang * home_angle * 2.5, -1.5, 1.5)
             forward_gain = max(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
