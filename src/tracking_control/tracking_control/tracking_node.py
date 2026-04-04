@@ -333,7 +333,7 @@ class TrackingNode(Node):
             forward_gain = min(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k*dx_r
             cmd_vel.linear.y = k*dy_r
-            cmd_vel.angular.z = 0
+            cmd_vel.angular.z = 0.0
 
         elif self.state == "AVOIDR":
             self.get_logger().info('STATE: Avoiding on Return')
@@ -358,9 +358,9 @@ class TrackingNode(Node):
         
         elif self.state == "DONE":
             self.get_logger().info('STATE: Done')
-            cmd_vel.linear.x = 0
-            cmd_vel.linear.y = 0
-            cmd_vel.angular.z = 0
+            cmd_vel.linear.x = 0.0
+            cmd_vel.linear.y = 0.0
+            cmd_vel.angular.z = 0.0
             
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
