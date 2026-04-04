@@ -261,8 +261,8 @@ class TrackingNode(Node):
             gain = 0.8 - obs_dist
 
             # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
-            cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
+            cmd_vel.linear.x = 0.8 * gain * des_theta
+            cmd_vel.linear.y = 0.8 * gain * des_theta
             cmd_vel.angular.z = 0.0
 
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
@@ -332,8 +332,8 @@ class TrackingNode(Node):
             gain = 0.8 - obs_dist
 
             # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * np.cos(des_theta)
-            cmd_vel.linear.y = 0.8 * gain * np.sin(des_theta)
+            cmd_vel.linear.x = 0.8 * gain * des_theta
+            cmd_vel.linear.y = 0.8 * gain * des_theta
             cmd_vel.angular.z = 0.0
             
             if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
