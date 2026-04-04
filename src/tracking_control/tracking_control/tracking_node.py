@@ -293,8 +293,8 @@ class TrackingNode(Node):
             #### New code ####
             rx = self.robot_world_x
             ry = self.robot_world_y
-            dx = self.start_pose[0] - rx
-            dy = self.start_pose[1] - ry
+            dx = rx - self.start_pose[0]
+            dy = ry - self.start_pose[1]
 
             ##New Code - 04/03 ##
             #self.get_logger().info(rx)
