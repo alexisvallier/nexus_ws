@@ -274,11 +274,19 @@ class TrackingNode(Node):
             # need to change this, without a goal pose in the camera it won't work
             # reassign gx and gy to the robot's position from the starting point
 
+
             #### New code ####
             rx = self.robot_world_x
             ry = self.robot_world_y
             dx = rx - self.start_pose[0]
             dy = ry - self.start_pose[1]
+
+            ##New Code - 04/03 ##
+            self.get_logger().info('Returning:')
+            self.get_logger().info(rx)
+            self.get_logger().info(ry)
+            self.get_logger().info(dx)
+            self.get_logger().info(yy)
 
             R_wr = self.robot_world_R
             R_rw = R_wr.T                 
@@ -305,7 +313,7 @@ class TrackingNode(Node):
 
             # Goal Tracking
             cmd_vel.angular.z = k_ang * home_angle
-            forward_gain = max(0.2, 1.0 - abs(home_angle))
+            forward_gain = min(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
