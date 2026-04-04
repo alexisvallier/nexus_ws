@@ -269,11 +269,15 @@ class TrackingNode(Node):
                 self.state = "GOAL"
 
         elif self.state == "RETURN":
-            self.get_logger().info('STATE: Return')
+            # self.get_logger().info('STATE: Return')
             # need to do opposite of current pose (go to robot frame origin)
             # need to change this, without a goal pose in the camera it won't work
             # reassign gx and gy to the robot's position from the starting point
-
+            self.get_logger().info(
+                f'STATE: {self.state} | '
+                f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f}) | '
+                f'Yaw: {np.degrees(self.robot_world_yaw):.1f}°'
+            )
 
             #### New code ####
             rx = self.robot_world_x
@@ -298,6 +302,8 @@ class TrackingNode(Node):
             
             home_dist = np.sqrt(dx_r**2 + dy_r**2)
             home_angle = np.arctan2(dy_r, dx_r)
+
+            self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
             ###################
 
             # avoid obstacle if needed
