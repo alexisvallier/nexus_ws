@@ -234,7 +234,7 @@ class TrackingNode(Node):
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
-                if abs(obs_angle) < 0.4 and obs_dist < 0.4:
+                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
                     # Decide direction once
                     self.state = "AVOID"
 
@@ -275,8 +275,7 @@ class TrackingNode(Node):
             # reassign gx and gy to the robot's position from the starting point
             self.get_logger().info(
                 f'STATE: {self.state} | '
-                f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f}) | '
-                f'Yaw: {np.degrees(self.robot_world_yaw):.1f}°'
+                f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f})'
             )
 
             #### New code ####
