@@ -224,7 +224,7 @@ class TrackingNode(Node):
 
         # Gain
         k_lin = 0.5
-        k_ang = 1.5
+        k_ang = 1.0
         
         # State machine ( bug 0 )
         
@@ -271,8 +271,6 @@ class TrackingNode(Node):
         elif self.state == "RETURN":
             # self.get_logger().info('STATE: Return')
             # need to do opposite of current pose (go to robot frame origin)
-            # need to change this, without a goal pose in the camera it won't work
-            # reassign gx and gy to the robot's position from the starting point
             self.get_logger().info(
                 f'STATE: {self.state} | '
                 f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f})'
@@ -316,8 +314,8 @@ class TrackingNode(Node):
                 return Twist()
 
             # Goal Tracking
-            cmd_vel.angular.z = np.clip(k_ang * home_angle * 2.5, -1.5, 1.5)
-            forward_gain = max(0.2, 1.0 - abs(home_angle))
+            cmd_vel.angular.z = k_ang * home_angle
+            forward_gain = min(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
