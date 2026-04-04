@@ -333,7 +333,7 @@ class TrackingNode(Node):
             forward_gain = min(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k*dx_r
             cmd_vel.linear.y = k*dy_r
-            cmd_vel.angular.z = -0.5 * home_angle
+            cmd_vel.angular.z = 0
 
         elif self.state == "AVOIDR":
             self.get_logger().info('STATE: Avoiding on Return')
