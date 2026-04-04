@@ -234,7 +234,7 @@ class TrackingNode(Node):
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
 
-                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
+                if abs(obs_angle) < 0.4 and obs_dist < 0.4:
                     # Decide direction once
                     self.state = "AVOID"
 
