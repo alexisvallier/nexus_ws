@@ -327,13 +327,19 @@ class TrackingNode(Node):
                 self.state = "DONE"
                 return Twist()
 
-            # Goal Tracking
-            k = 0.5
-            cmd_vel.angular.z = k_ang * home_angle
-            forward_gain = min(0.2, 1.0 - abs(home_angle))
-            cmd_vel.linear.x = k*dx_r
-            cmd_vel.linear.y = k*dy_r
-            cmd_vel.angular.z = 0.0
+            # turn toward home if havent done so already
+            if abs(home_angle) > 0.2:
+                cmd_vel.linear.x = 0.0
+                cmd_vel.linear.y = 0.0
+                cmd_vel.angular.z = 1.5*home_angle
+            else:
+                # Goal Tracking
+                k = 0.5
+                cmd_vel.angular.z = k_ang * home_angle
+                forward_gain = min(0.2, 1.0 - abs(home_angle))
+                cmd_vel.linear.x = k*dx_r
+                cmd_vel.linear.y = k*dy_r
+                cmd_vel.angular.z = 0.0
 
         elif self.state == "AVOIDR":
             self.get_logger().info('STATE: Avoiding on Return')
