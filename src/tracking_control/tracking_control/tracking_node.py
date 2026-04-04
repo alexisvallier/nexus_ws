@@ -282,11 +282,12 @@ class TrackingNode(Node):
             dy = ry - self.start_pose[1]
 
             ##New Code - 04/03 ##
-            self.get_logger().info('Returning:')
-            self.get_logger().info(rx)
-            self.get_logger().info(ry)
-            self.get_logger().info(dx)
-            self.get_logger().info(yy)
+            self.get_logger().info('STATE: Home dist: ')
+
+            #self.get_logger().info(rx)
+            #self.get_logger().info(ry)
+            #self.get_logger().info(dx)
+            #self.get_logger().info(yy)
 
             R_wr = self.robot_world_R
             R_rw = R_wr.T                 
@@ -312,8 +313,8 @@ class TrackingNode(Node):
                 return Twist()
 
             # Goal Tracking
-            cmd_vel.angular.z = k_ang * home_angle
-            forward_gain = min(0.2, 1.0 - abs(home_angle))
+            cmd_vel.angular.z = k_ang * home_angle * 2
+            forward_gain = max(0.2, 1.0 - abs(home_angle))
             cmd_vel.linear.x = k_lin * home_dist * forward_gain
 
         elif self.state == "AVOIDR":
