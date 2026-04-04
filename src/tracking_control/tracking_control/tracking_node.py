@@ -155,13 +155,23 @@ class TrackingNode(Node):
             self.robot_world_y = transform.transform.translation.y
             self.robot_world_z = transform.transform.translation.z
             self.robot_world_R = q2R([transform.transform.rotation.w, transform.transform.rotation.x, transform.transform.rotation.y, transform.transform.rotation.z])
-
-            obstacle_pose = self.robot_world_R@self.obs_pose+np.array([self.robot_world_x,self.robot_world_y,self.robot_world_z])
-            goal_pose = self.robot_world_R@self.goal_pose+np.array([self.robot_world_x,self.robot_world_y,self.robot_world_z])
         
         except TransformException as e:
             self.get_logger().error('Transform error: ' + str(e))
             return
+
+        obstacle_pose = None
+        goal_pose = None
+    
+        if self.obs_pose is not None:
+            obstacle_pose = self.robot_world_R @ self.obs_pose + np.array([
+                self.robot_world_x, self.robot_world_y, self.robot_world_z
+            ])
+    
+        if self.goal_pose is not None:
+            goal_pose = self.robot_world_R @ self.goal_pose + np.array([
+                self.robot_world_x, self.robot_world_y, self.robot_world_z
+            ])
         
         return obstacle_pose, goal_pose
     
@@ -179,7 +189,11 @@ class TrackingNode(Node):
             return
         
         # Get the current object pose in the robot base_footprint frame
-        current_obs_pose, current_goal_pose = self.get_current_poses()
+        poses = self.get_current_poses()
+        if poses is None:
+            return
+        
+        current_obs_pose, current_goal_pose = poses
         
         # TODO: get the control velocity command
         cmd_vel = self.controller()
