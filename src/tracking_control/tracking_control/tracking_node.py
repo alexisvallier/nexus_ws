@@ -319,7 +319,7 @@ class TrackingNode(Node):
             home_angle = np.arctan2(dy_r, dx_r) - np.pi/2
 
             current_theta = np.arctan2(R_wr[1,0], R_wr[0,0])
-            angle_error = desired_theta - current_theta
+            angle_error = home_angle - current_theta
 
             # wrap to [-pi, pi]
             angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
