@@ -289,14 +289,7 @@ class TrackingNode(Node):
                 self.state = "GOAL"
 
         elif self.state == "RETURN":
-            # self.get_logger().info('STATE: Return')
-            # need to do opposite of current pose (go to robot frame origin)
-            #self.get_logger().info(
-            #    f'STATE: {self.state} | '
-            #    f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f})'
-            #)
-
-            #### New code ####
+            
             rx = self.robot_world_x
             ry = self.robot_world_y
             dx = self.start_pose[0] - rx
@@ -338,7 +331,6 @@ class TrackingNode(Node):
                 cmd_vel.angular.z = 1.5*home_angle
             else:
                 # Goal Tracking
-                #self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
                 self.spin_flag = True
                 k = 0.5
                 forward_gain = min(0.2, 1.0 - abs(home_angle))
@@ -347,7 +339,6 @@ class TrackingNode(Node):
                 cmd_vel.angular.z = 0.0
 
         elif self.state == "AVOIDR":
-            #self.get_logger().info('STATE: Avoiding on Return')
             # obstacle avoided
             if obs_pose is None:
                 self.state = "RETURN"
@@ -368,7 +359,7 @@ class TrackingNode(Node):
                 self.state = "RETURN"
         
         elif self.state == "DONE":
-            #self.get_logger().info('STATE: Done')
+            self.get_logger().info('STATE: Done')
             cmd_vel.linear.x = 0.0
             cmd_vel.linear.y = 0.0
             cmd_vel.angular.z = 0.0
