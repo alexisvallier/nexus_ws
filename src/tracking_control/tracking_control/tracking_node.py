@@ -289,6 +289,10 @@ class TrackingNode(Node):
                 f'STATE: {self.state} | '
                 f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f})'
             )
+            self.get_logger().info(
+                f"R_wr[0,0]: {self.robot_world_R[0,0]:.3f}, "
+                f"R_wr[0,1]: {self.robot_world_R[0,1]:.3f}"
+            )
 
             #### New code ####
             rx = self.robot_world_x
