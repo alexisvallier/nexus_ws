@@ -318,7 +318,14 @@ class TrackingNode(Node):
             home_dist = np.sqrt(dx_r**2 + dy_r**2)
             home_angle = np.arctan2(dy_r, dx_r) - np.pi/2
 
+            current_theta = np.arctan2(R_wr[1,0], R_wr[0,0])
+            angle_error = desired_theta - current_theta
+
+            # wrap to [-pi, pi]
+            angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
+
             self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
+            self.get_logger().info(f'Error: {angle_error:.2f}')
             ###################
 
             # avoid obstacle if needed
@@ -332,7 +339,7 @@ class TrackingNode(Node):
                 return Twist()
 
             # turn toward home if havent done so already
-            if abs(home_angle) > 0.2:
+            if abs(angle_error) > 0.2:
                 cmd_vel.linear.x = 0.0
                 cmd_vel.linear.y = 0.0
                 cmd_vel.angular.z = 1.5*home_angle
