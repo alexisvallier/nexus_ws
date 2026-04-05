@@ -293,8 +293,8 @@ class TrackingNode(Node):
             #### New code ####
             rx = self.robot_world_x
             ry = self.robot_world_y
-            dx = self.start_pose[0] - rx
-            dy = self.start_pose[1] - ry
+            dx = rx - self.start_pose[0]
+            dy = ry - self.start_pose[1]
 
             ##New Code - 04/03 ##
             #self.get_logger().info(rx)
@@ -312,7 +312,7 @@ class TrackingNode(Node):
             dy_r = error_robot[1]
             
             home_dist = np.sqrt(dx_r**2 + dy_r**2)
-            home_angle = np.arctan2(dy_r, dx_r)
+            home_angle = np.arctan2(dy_r, dx_r) - np.pi/2
 
             self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
             ###################
@@ -335,7 +335,6 @@ class TrackingNode(Node):
             else:
                 # Goal Tracking
                 k = 0.5
-                cmd_vel.angular.z = k_ang * home_angle
                 forward_gain = min(0.2, 1.0 - abs(home_angle))
                 cmd_vel.linear.x = k*dx_r
                 cmd_vel.linear.y = k*dy_r
