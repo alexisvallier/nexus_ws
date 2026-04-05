@@ -299,8 +299,8 @@ class TrackingNode(Node):
             #### New code ####
             rx = self.robot_world_x
             ry = self.robot_world_y
-            dx = rx - self.start_pose[0]
-            dy = ry - self.start_pose[1]
+            dx = self.start_pose[0] - rx
+            dy = self.start_pose[1] - ry
 
             R_wr = self.robot_world_R
             R_rw = R_wr.T                 
