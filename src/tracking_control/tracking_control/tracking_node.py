@@ -75,6 +75,8 @@ class TrackingNode(Node):
         self.robot_world_z = None
         self.robot_world_R = None
 
+        self.goal_angle = None
+
         # State for control
         self.state = "GOAL"
         
@@ -253,8 +255,11 @@ class TrackingNode(Node):
                     self.state = "AVOID"
 
             # goal reached
-            if goal_dist < 0.4:
+            if goal_dist < 0.5:
                 self.state = "RETURN"
+                # save current heading
+                R_wr = self.robot_world_R
+                self.goal_angle = np.arctan2(R_wr[1,0], R_wr[0,0])
         
             # Goal Tracking
             cmd_vel.angular.z = k_ang * angle
@@ -319,7 +324,7 @@ class TrackingNode(Node):
             home_angle = np.arctan2(dy_r, dx_r) - np.pi/2
 
             current_theta = np.arctan2(R_wr[1,0], R_wr[0,0])
-            angle_error = home_angle - current_theta
+            angle_error = self.goal_angle + np.pi - current_theta
 
             # wrap to [-pi, pi]
             angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
