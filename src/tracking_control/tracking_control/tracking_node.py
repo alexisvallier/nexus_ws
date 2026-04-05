@@ -318,7 +318,7 @@ class TrackingNode(Node):
             angle_error = self.goal_angle + np.pi - current_theta
 
             # wrap to [-pi, pi]
-            angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
+            angle_error = (angle_error + 3*np.pi/4) % (2*np.pi) - np.pi
 
             # avoid obstacle if needed
             if obs_pose is not None:
