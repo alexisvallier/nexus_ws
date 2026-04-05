@@ -76,6 +76,7 @@ class TrackingNode(Node):
         self.robot_world_R = None
 
         self.goal_angle = None
+        self.spin_flag = False
 
         # State for control
         self.state = "GOAL"
@@ -294,22 +295,12 @@ class TrackingNode(Node):
                 f'STATE: {self.state} | '
                 f'Pos: ({self.robot_world_x:.2f}, {self.robot_world_y:.2f})'
             )
-            self.get_logger().info(
-                f"R_wr[0,0]: {self.robot_world_R[0,0]:.3f}, "
-                f"R_wr[0,1]: {self.robot_world_R[0,1]:.3f}"
-            )
 
             #### New code ####
             rx = self.robot_world_x
             ry = self.robot_world_y
             dx = rx - self.start_pose[0]
             dy = ry - self.start_pose[1]
-
-            ##New Code - 04/03 ##
-            #self.get_logger().info(rx)
-            #self.get_logger().info(ry)
-            #self.get_logger().info(dx)
-            #self.get_logger().info(yy)
 
             R_wr = self.robot_world_R
             R_rw = R_wr.T                 
@@ -329,10 +320,6 @@ class TrackingNode(Node):
             # wrap to [-pi, pi]
             angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
 
-            self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
-            self.get_logger().info(f'Error: {angle_error:.2f}')
-            ###################
-
             # avoid obstacle if needed
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy, ox)
@@ -344,12 +331,15 @@ class TrackingNode(Node):
                 return Twist()
 
             # turn toward home if havent done so already
-            if abs(angle_error) > 0.2:
+            if (self.spin_flag == False) and (abs(angle_error) > 0.3):
+                self.get_logger().info(f'Spinning with error: {angle_error}')
                 cmd_vel.linear.x = 0.0
                 cmd_vel.linear.y = 0.0
                 cmd_vel.angular.z = 1.5*home_angle
             else:
                 # Goal Tracking
+                self.get_logger().info(f'Target Dist: {home_dist:.2f} | Target Angle: {home_angle:.2f}')
+                self.spin_flag = True
                 k = 0.5
                 forward_gain = min(0.2, 1.0 - abs(home_angle))
                 cmd_vel.linear.x = k*dx_r
