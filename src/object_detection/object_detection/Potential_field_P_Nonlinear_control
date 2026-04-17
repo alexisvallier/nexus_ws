@@ -1,0 +1,153 @@
+clc;
+clear;
+close all;
+
+
+% Basic settings(just I pick)
+start_pos = [0; 0];
+goal_pos  = [5; 5];
+theta = 0;   % initial heading angle
+
+% Obstacle positions(Just I pick)
+obstacles = [2.0 2.0;
+             3.0 3.5;
+             4.0 2.5];
+
+% Potential field gains(Just I pick)
+k_att = 1.0;     % attractive gain
+k_rep = 0.8;     % repulsive gain
+d0    = 1.2;     % obstacle influence distance
+
+% Control law gains
+k_v = 0.6;       % linear velocity gain
+k_w = 1.5;       % angular velocity gain
+
+% Velocity limits
+v_max = 0.3;
+w_max = 1.0;
+
+% Simulation settings
+dt = 0.1;
+max_steps = 420;
+goal_tol = 0.05;
+
+
+robot_pos = start_pos;
+
+trajectory = robot_pos';
+theta_history = theta;
+
+
+% Main simulation loop
+
+for i = 1:max_steps
+    
+    % Attractive force toward goal
+    f_att = k_att * (goal_pos - robot_pos);
+    
+    % Total repulsive force from obstacles
+    f_rep_total = [0; 0];
+    
+    for j = 1:size(obstacles,1)
+        obs = obstacles(j, :)';
+        diff = robot_pos - obs;
+        dist = norm(diff);
+        
+        if dist > 0 && dist < d0
+            direction = diff / dist;
+            magnitude = k_rep * (1/dist - 1/d0) / (dist^2);
+            f_rep = magnitude * direction;
+        else
+            f_rep = [0; 0];
+        end
+        
+        f_rep_total = f_rep_total + f_rep;
+    end
+    
+    % Total force
+    f_total = f_att + f_rep_total;
+    
+    if norm(f_total) < 1e-6
+        v = 0;
+        w = 0;
+    else
+        % Desired heading angle
+        theta_d = atan2(f_total(2), f_total(1));
+        
+        % Heading error wrapped to [-pi, pi]
+        e_theta = atan2(sin(theta_d - theta), cos(theta_d - theta));
+        
+        % P Controller,Nonlinear Control Law
+        v = k_v * norm(f_total) * cos(e_theta);
+        w = k_w * e_theta;
+        
+        % Prevent backward motion
+        if v < 0
+            v = 0;
+        end
+        
+        % Saturation
+        v = min(v, v_max);
+        w = max(min(w, w_max), -w_max);
+    end
+    
+    % Unicycle model update
+    robot_pos(1) = robot_pos(1) + v * cos(theta) * dt;
+    robot_pos(2) = robot_pos(2) + v * sin(theta) * dt;
+    theta = theta + w * dt;
+    theta = atan2(sin(theta), cos(theta));
+    
+    % Save history
+    trajectory = [trajectory; robot_pos'];
+    theta_history = [theta_history; theta];
+    
+    % Stop if goal is reached
+    if norm(robot_pos - goal_pos) < goal_tol
+        disp('Goal reached!');
+        break;
+    end
+end
+
+%plot
+figure;
+hold on;
+grid on;
+axis equal;
+
+% Plot start and goal
+plot(start_pos(1), start_pos(2), 'ks', 'MarkerSize', 10, 'LineWidth', 2);
+plot(goal_pos(1), goal_pos(2), 'g*', 'MarkerSize', 12, 'LineWidth', 2);
+
+% Plot obstacles
+for j = 1:size(obstacles,1)
+    plot(obstacles(j,1), obstacles(j,2), 'bx', 'MarkerSize', 12, 'LineWidth', 2);
+end
+
+xlabel('x');
+ylabel('y');
+title('Potential Field Obstacle Avoidance with Control Law');
+
+% Initialize trajectory and robot marker
+h_traj = plot(trajectory(1,1), trajectory(1,2), 'b-', 'LineWidth', 1.5);
+h_robot = plot(trajectory(1,1), trajectory(1,2), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+
+% Animate robot motion
+for k = 1:size(trajectory,1)
+    set(h_traj, 'XData', trajectory(1:k,1), 'YData', trajectory(1:k,2));
+    set(h_robot, 'XData', trajectory(k,1), 'YData', trajectory(k,2));
+    pause(0.03);
+end
+
+legend('Start', 'Goal', 'Obstacles', 'Obstacles', 'Obstacles');
+
+
+% Plot heading angle
+
+figure;
+plot(theta_history, 'LineWidth', 1.5);
+grid on;
+xlabel('Step');
+ylabel('\theta (rad)');
+title('Robot Heading Angle');
+
+legend('Start', 'Goal', 'Obstacles', 'Obstacles', 'Obstacles');
