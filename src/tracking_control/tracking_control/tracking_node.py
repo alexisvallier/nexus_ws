@@ -268,6 +268,7 @@ class TrackingNode(Node):
 
         # moving toward goal
         if self.state == "GOAL":
+            self.state = "TEST"
             self.get_logger().info('STATE: Goal')
             if obs_pose is not None:
                 obs_angle = np.arctan2(oy,ox)
@@ -299,7 +300,7 @@ class TrackingNode(Node):
             #Initialize Start + target once
             if self.test_start is None:
                 self.test_start = np.array([self.robot_world_x, self.robot_world_y])
-                self.test_target = self.test_start + np.array([10.0, 10.0])
+                self.test_target = self.test_start + np.array([1.0, 1.0])
 
                 self.get_logger().info(
                     f"TEST Target set: x={self.test_target[0]:.2f}, y={self.test_target[1]:.2f}"
