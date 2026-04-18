@@ -80,6 +80,13 @@ class TrackingNode(Node):
 
         # State for control
         self.state = "GOAL"
+
+        ## New Stuff ################
+        self.test_mode = True
+        self.test_target = None
+        self.test_start = None
+        # Simple P gain
+        self.kp_test = 0.3
         
         # ROS parameters
         self.declare_parameter('world_frame_id', 'odom')
@@ -181,6 +188,10 @@ class TrackingNode(Node):
     def timer_update(self):
         ################### Write your code here ###################
         
+        ## New Stuff
+        if self.test_mode:
+            self.state = "TEST"
+
         # Now, the robot stops if the object is not detected
         # But, you may want to think about what to do in this case
         # and update the command velocity accordingly
@@ -196,6 +207,11 @@ class TrackingNode(Node):
         if poses is None:
             return
         
+        ## New Stuff #####################
+        self.get_logger().info(
+            f"Current Position -> x: {self.robot_world_x:.2f}, y: {self.robot_world_y:.2f}"
+        )
+
         current_obs_pose, current_goal_pose = poses
         
         # TODO: get the control velocity command
@@ -245,6 +261,7 @@ class TrackingNode(Node):
         
         # State machine ( bug 0 )
         
+
         # moving toward goal
         if self.state == "GOAL":
             self.get_logger().info('STATE: Goal')
@@ -266,6 +283,54 @@ class TrackingNode(Node):
             cmd_vel.angular.z = k_ang * angle
             forward_gain = max(0.2, 1.0 - abs(angle))
             cmd_vel.linear.x = k_lin * goal_dist * forward_gain
+
+        ## New Stuff: ##################################
+        ## Test Logic here
+        elif self.state == "TEST":
+            self.get_logger().info('STATE: TEST')
+
+            ## Test Code Goes Here
+            cmd_vel = Twist()
+
+            #Initialize Start + target once
+            if self.test_start is None:
+                self.test_start = np.array([self.robot_world_x, self.robot_world_y])
+                self.test_target = self.test_start + np.array([10.0, 10.0])
+
+                self.get_logger().info(
+                    f"TEST Target set: x={self.test_target[0]:.2f}, y={self.test_target[1]:.2f}"
+                )
+
+            #Current Position
+            rx = self.robot_world_x
+            ry = self.robot_world_y
+
+            #Error in World frame
+            error_world = np.array([
+                self.test_target[0] - rx,
+                self.test_target[1] - ry,
+                0
+            ])
+
+            #Convert World -> Robot frame
+            R_wr = self.robot_world_R
+            R_rw = R_wr.T
+            error_robot = R_rw @ error_world
+
+            dist = np.sqrt(ex**2 + ey**2)
+
+            #Stop Condition
+            if dist < 0.2:
+                self.get_logger().info("TEST TARGET REACHED")
+                return Twist()
+
+            #Potential Control
+            cmd_vel.linear.x = self.kp_test * ex
+            cmd_vel.linear.y = slef.kp_test * ey
+            cmd_vel.angular.z = 0.0
+
+            return cmd_vel
+
 
         # obstacle encountered
         elif self.state == "AVOID":
