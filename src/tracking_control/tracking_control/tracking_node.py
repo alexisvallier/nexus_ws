@@ -79,7 +79,7 @@ class TrackingNode(Node):
         self.spin_flag = False
 
         # State for control
-        self.state = "GOAL"
+        self.state = "TEST"
 
         ## New Stuff ################
         self.test_mode = True
