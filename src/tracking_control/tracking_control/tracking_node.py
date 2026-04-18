@@ -222,6 +222,7 @@ class TrackingNode(Node):
         #################################################
     
     def controller(self):
+        self.get_logger().info("CONTROLLER ENTERED")
         # Instructions: You can implement your own control algorithm here
         # feel free to modify the code structure, add more parameters, more input variables for the function, etc.
         
