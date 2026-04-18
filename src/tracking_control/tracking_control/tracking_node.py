@@ -195,17 +195,20 @@ class TrackingNode(Node):
         # Now, the robot stops if the object is not detected
         # But, you may want to think about what to do in this case
         # and update the command velocity accordingly
-        if (self.state == "GOAL") and (self.goal_pose is None):
-            cmd_vel = Twist() 
-            # spin to try to find goal again
-            cmd_vel.angular.z = 0.1
-            self.pub_control_cmd.publish(cmd_vel)
-            return
+        
+
+
+        #if (self.state == "GOAL") and (self.goal_pose is None):
+        #    cmd_vel = Twist() 
+        #    # spin to try to find goal again
+        #    cmd_vel.angular.z = 0.1
+        #    self.pub_control_cmd.publish(cmd_vel)
+        #    return
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
-        if poses is None:
-            return
+        #if poses is None:
+        #    return
         
         ## New Stuff #####################
         self.get_logger().info(
