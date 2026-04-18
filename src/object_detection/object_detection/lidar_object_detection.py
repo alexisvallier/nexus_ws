@@ -2,12 +2,9 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from message_filters import ApproximateTimeSynchronizer, Subscriber
-from sensor_msgs.msg import Image, PointCloud2, LaserScan
-from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import PoseStamped, PoseArray
 from tf2_ros import TransformException, Buffer, TransformListener
-from cv_bridge import CvBridge
-import cv2
 import numpy as np
 import struct
 import sys
@@ -63,101 +60,71 @@ class LidarObjDetectionNode(Node):
         # Declare the parameters for the color detection
         self.declare_parameter('dist_low', 0)
         self.declare_parameter('dist_high', 4)
-
-        # TODO: change this if it is needed
-        self.declare_parameter('object_size_min', 1000)
-
-        # Used to convert between ROS and OpenCV images
-        # TODO: can most likely get rid of
-        self.br = CvBridge()
         
         # Create a transform listener
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         
-        # TODO: update to subscribe to /scan topic and publish similar topic but named dif
         # Create publisher for the detected object and the bounding box
-        # TODO: figure out if PoseStamped is the right topic to publish from here, especially if we need more than one pose
-        self.pub_detected_obj = self.create_publisher(PoseStamped, '/detected_lidar_obj',10)
+        self.pub_detected_obj = self.create_publisher(PoseArray, '/detected_lidar_obj',10)
         # Create a subscriber to the LiDAR LaserScan topic
-        self.sub_lidar = Subscriber(self, LaserScan, '/scan')
-        # Create a time synchronizer
-        self.ts = ApproximateTimeSynchronizer([self.sub_lidar], 10, 0.1)
-        # Register the callback to the time synchronizer
-        self.ts.registerCallback(self.camera_callback)
+        self.sub_lidar = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
 
-    # TODO: change callback to process lidar data
-    def camera_callback(self, rgb_msg, points_msg):
-        #self.get_logger().info('Received RGB and Depth Messages')
+    def lidar_callback(self, points_msg):
+        self.get_logger().info('Received LiDAR Messages')
         # get ROS parameters
-        param_color_low = np.array(self.get_parameter('color_low').value)
-        param_color_high = np.array(self.get_parameter('color_high').value)
-        param_object_size_min = self.get_parameter('object_size_min').value
+        param_dist_low = self.get_parameter('dist_low').value
+        param_dist_high = self.get_parameter('dist_high').value
         
-        # Convert the ROS image message to a numpy array
-        rgb_image = self.br.imgmsg_to_cv2(rgb_msg,"bgr8")
-        # to hsv
-        hsv_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2HSV)
-        
-        # color mask
-        color_mask = cv2.inRange(hsv_image, param_color_low, param_color_high)
-        # find largest contour
-        contours, _ = cv2.findContours(color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) > 0:
-            largest_contour = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            # threshold by size
-            if w * h < param_object_size_min:
-                return
-            # draw rectangle
-            rgb_image=cv2.rectangle(rgb_image, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            center_x = int(x + w / 2)
-            center_y = int(y + h / 2)
-        else:
-            return
-        # get the location of the detected object using point cloud
-        pointid = (center_y*points_msg.row_step) + (center_x*points_msg.point_step)
-        (X, Y, Z) = struct.unpack_from('fff', points_msg.data, offset=pointid)
-        center_points = np.array([X,Y,Z])
+        # filter points by distance
+        ranges = np.array(points_msg.ranges)
+        angles = points_msg.angle_min + np.arange(len(ranges)) * points_msg.angle_increment
+        valid_indices = np.where((ranges >= param_dist_low) & (ranges <= param_dist_high))[0]
+        valid_ranges = ranges[valid_indices]
+        valid_angles = angles[valid_indices]
+        # convert to Cartesian coordinates
+        x = valid_ranges * np.cos(valid_angles)
+        y = valid_ranges * np.sin(valid_angles)
+        points = np.vstack((x, y)).T
 
-        if np.any(np.isnan(center_points)):
-            return
-
-        # TODO: change transform from 'laser' frame instead
         # may not need to change much
         try:
             # Transform the center point from the camera frame to the world frame
-            transform = self.tf_buffer.lookup_transform('base_footprint',rgb_msg.header.frame_id,rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
+            transform = self.tf_buffer.lookup_transform('base_footprint',points_msg.header.frame_id,rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
             t_R = q2R(np.array([transform.transform.rotation.w,transform.transform.rotation.x,transform.transform.rotation.y,transform.transform.rotation.z]))
-            cp_robot = t_R@center_points+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
-            # Create a pose message for the detected object
-            detected_obj_pose = PoseStamped()
+            
+            #create a pose message for the detected object
+            detected_obj_pose = PoseArray()
             detected_obj_pose.header.frame_id = 'base_footprint'
-            detected_obj_pose.header.stamp = rgb_msg.header.stamp
-            detected_obj_pose.pose.position.x = cp_robot[0]
-            detected_obj_pose.pose.position.y = cp_robot[1]
-            detected_obj_pose.pose.position.z = cp_robot[2]
+            detected_obj_pose.header.stamp = points_msg.header.stamp
+
+            # transform each point in points to the world frame and add to the pose array
+            for i in range(points.shape[0]):
+                point = points[i]
+                point_3d = np.array([point[0], point[1], 0.0])
+                cp_robot = t_R@point_3d+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
+                pose = PoseStamped()
+                pose.pose.position.x = cp_robot[0]
+                pose.pose.position.y = cp_robot[1]
+                pose.pose.position.z = 0
+                detected_obj_pose.poses.append(pose.pose)
+
         except TransformException as e:
             self.get_logger().error('Transform Error: {}'.format(e))
             return
         
         # Publish the detected object
-        self.pub_detected_obj_pose.publish(detected_obj_pose)
-        # publush the detected object image
-        detect_img_msg = self.br.cv2_to_imgmsg(rgb_image, encoding='bgr8')
-        detect_img_msg.header = rgb_msg.header
-        #self.get_logger().info('image message published')
-        self.pub_detected_obj.publish(detect_img_msg)
+        self.pub_detected_obj.publish(detected_obj_pose)
         
 def main(args=None):
     # Initialize the rclpy library
     rclpy.init(args=args)
     # Create the node
-    color_obj_detection_node = LidarObjDetectionNode()
+    lidar_obj_detection_node = LidarObjDetectionNode()
     # Spin the node so the callback function is called.
-    rclpy.spin(color_obj_detection_node)
+    rclpy.spin(lidar_obj_detection_node)
     # Destroy the node explicitly
-    color_obj_detection_node.destroy_node()
+    lidar_obj_detection_node.destroy_node()
     # Shutdown the ROS client library for Python
     rclpy.shutdown()
 
