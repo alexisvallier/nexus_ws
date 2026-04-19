@@ -65,18 +65,22 @@ class TrackingNode(Node):
         super().__init__('tracking_node')
         self.get_logger().info('Tracking Node Started')
         
-        # Current object pose
-        self.obs_pose = None
         self.goal_pose = None
-        # Initialize start pose for return
         self.start_pose = None
+
         self.robot_world_x = None
         self.robot_world_y = None
         self.robot_world_z = None
         self.robot_world_R = None
 
-        self.goal_angle = None
-        self.spin_flag = False
+        self.goal_x = 0.0
+        self.goal_y = 0.0
+
+        self.repel_x = 0.0
+        self.repel_y = 0.0
+
+        self.attract_x = 0.0
+        self.attract_y = 0.0
 
         # State for control
         self.state = "TEST"
@@ -97,66 +101,36 @@ class TrackingNode(Node):
         
         # Create publisher for the control command
         self.pub_control_cmd = self.create_publisher(Twist, '/track_cmd_vel', 10)
-        # Create a subscriber to the detected object pose
-        self.sub_detected_goal_pose = self.create_subscription(PoseStamped, 'detected_color_object_pose', self.detected_obs_pose_callback, 10)
-        self.sub_detected_obs_pose = self.create_subscription(PoseStamped, 'detected_color_goal_pose', self.detected_goal_pose_callback, 10)
+
+        # subscribe to lidar detections
+        self.sub_detected_objects = self.create_subscription(PoseArray, '/detected_lidar_obj', self.detected_objects_pose_callback, 10)
 
         # Create timer, running at 100Hz
         self.timer = self.create_timer(0.01, self.timer_update)
     
-    def detected_obs_pose_callback(self, msg):
-        self.get_logger().info('Received Detected Object Pose')
-        
-        odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
-        center_points = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
-        
-        # TODO: Filtering
-        # You can decide to filter the detected object pose here
-        # For example, you can filter the pose based on the distance from the camera
-        # or the height of the object
-        if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
-            return
-        
-        try:
-            # Transform the center point from the camera frame to the world frame
-            transform = self.tf_buffer.lookup_transform(odom_id,msg.header.frame_id,rclpy.time.Time(),rclpy.duration.Duration(seconds=0.1))
-            t_R = q2R(np.array([transform.transform.rotation.w,transform.transform.rotation.x,transform.transform.rotation.y,transform.transform.rotation.z]))
-            cp_world = t_R@center_points+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
-        except TransformException as e:
-            self.get_logger().error('Transform Error: {}'.format(e))
-            return
-        
-        # Get the detected object pose in the world frame
-        self.obs_pose = cp_world
+    def detected_objects_pose_callback(self, msg):
+        self.get_logger().info('Received Detected LiDAR Object Pose')
 
-    def detected_goal_pose_callback(self, msg):
-        self.get_logger().info('Received Detected Object Pose')
+        # calculate the repulsive force from the detected objects
+        # for each pose, add x and y components to the repulsive force
+        for pose in msg.poses:
+            # convert pose to numpy array
+            obj_pose = np.array([pose.position.x, pose.position.y, pose.position.z])
+            # calculate repulsive force ( simple inverse square law )
+            dist = np.linalg.norm(obj_pose)
+            if dist < 0.01:
+                continue
+            force_magnitude = 1.0 / (dist**2)
+            force_direction = -obj_pose / dist
+            force = force_magnitude * force_direction
+            self.repel_x += force[0]
+            self.repel_y += force[1]
         
-        odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
-        center_points = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
-        
-        # TODO: Filtering
-        # You can decide to filter the detected object pose here
-        # For example, you can filter the pose based on the distance from the camera
-        # or the height of the object
-        if np.linalg.norm(center_points) > 3.0 or center_points[2] > 0.7:
-            return
-        
-        try:
-            # Transform the center point from the camera frame to the world frame
-            transform = self.tf_buffer.lookup_transform(odom_id,msg.header.frame_id,rclpy.time.Time(),rclpy.duration.Duration(seconds=0.1))
-            t_R = q2R(np.array([transform.transform.rotation.w,transform.transform.rotation.x,transform.transform.rotation.y,transform.transform.rotation.z]))
-            cp_world = t_R@center_points+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
-        except TransformException as e:
-            self.get_logger().error('Transform Error: {}'.format(e))
-            return
-        
-        # Get the detected object pose in the world frame
-        self.goal_pose = cp_world
-        
+    # not sure whether need this funciton anymore
     def get_current_poses(self):
         
         odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
+        
         # Get the current robot pose
         try:
             # from base_footprint to odom
@@ -169,279 +143,56 @@ class TrackingNode(Node):
         except TransformException as e:
             self.get_logger().error('Transform error: ' + str(e))
             return
-
-        obstacle_pose = None
-        goal_pose = None
-    
-        if self.obs_pose is not None:
-            obstacle_pose = self.robot_world_R @ self.obs_pose + np.array([
-                self.robot_world_x, self.robot_world_y, self.robot_world_z
-            ])
-    
-        if self.goal_pose is not None:
-            goal_pose = self.robot_world_R @ self.goal_pose + np.array([
-                self.robot_world_x, self.robot_world_y, self.robot_world_z
-            ])
         
-        return obstacle_pose, goal_pose
+        return [self.robot_world_x, self.robot_world_y, self.robot_world_z, self.robot_world_R]
     
     def timer_update(self):
-        ################### Write your code here ###################
-        
         ## New Stuff
         if self.test_mode:
             self.state = "TEST"
-
-        # Now, the robot stops if the object is not detected
-        # But, you may want to think about what to do in this case
-        # and update the command velocity accordingly
-        
-
-
-        #if (self.state == "GOAL") and (self.goal_pose is None):
-        #    cmd_vel = Twist() 
-        #    # spin to try to find goal again
-        #    cmd_vel.angular.z = 0.1
-        #    self.pub_control_cmd.publish(cmd_vel)
-        #    return
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
-        #if poses is None:
-        #    return
-        
-        ## New Stuff #####################
-        self.get_logger().info(
-            f"Current Position -> x: {self.robot_world_x:.2f}, y: {self.robot_world_y:.2f}"
-        )
-
-        current_obs_pose, current_goal_pose = poses
-        
-        # TODO: get the control velocity command
-        cmd_vel = self.controller()
-        
-        # publish the control command
-        self.pub_control_cmd.publish(cmd_vel)
-        #################################################
-    
-    def controller(self):
-        self.get_logger().info("CONTROLLER ENTERED")
-        # Instructions: You can implement your own control algorithm here
-        # feel free to modify the code structure, add more parameters, more input variables for the function, etc.
-        
-        ########### Write your code here ###########
-        cmd_vel = Twist()
 
         # set starting position
         if self.start_pose is None:
             self.start_pose = np.array([
-                self.robot_world_x,
-                self.robot_world_y
+                poses[0],
+                poses[1]
             ])
 
-        # Get poses
-        obs_pose, goal_pose = self.get_current_poses()
+        # TODO: account for transform error state
+        # calculate the attractive potential from the goal
+        goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.robot_world_x, self.robot_world_y]))
+        goal_angle = np.arctan2(self.goal_y - self.robot_world_y, self.goal_x - self.robot_world_x)
 
-        # Goal position in robot frame
-        gx = goal_pose[0]
-        gy = goal_pose[1]
-
-        # Distance + angle to goal
-        goal_dist = np.sqrt(gx**2 + gy**2)
-        angle = np.arctan2(gy, gx)
-
-        # Obstacle Position
-        ox, oy = None, None
-        obs_dist = None
+        self.attract_x = goal_dist * np.cos(goal_angle)
+        self.attract_y = goal_dist * np.sin(goal_angle)
         
-        if obs_pose is not None:
-            ox = obs_pose[0]
-            oy = obs_pose[1]
-            obs_dist = np.sqrt(ox**2 + oy**2)
-
-        # Gain
-        k_lin = 0.5
-        k_ang = 1.0
+        cmd_vel = self.controller()
         
-        # State machine ( bug 0 )
-        
-
-        # moving toward goal
-        if self.state == "GOAL":
-            self.state = "TEST"
-            self.get_logger().info('STATE: Goal')
-            if obs_pose is not None:
-                obs_angle = np.arctan2(oy,ox)
-
-                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
-                    # Decide direction once
-                    self.state = "AVOID"
-
-            # goal reached
-            if goal_dist < 0.5:
-                self.state = "RETURN"
-                # save current heading
-                R_wr = self.robot_world_R
-                self.goal_angle = np.arctan2(R_wr[1,0], R_wr[0,0])
-        
-            # Goal Tracking
-            cmd_vel.angular.z = k_ang * angle
-            forward_gain = max(0.2, 1.0 - abs(angle))
-            cmd_vel.linear.x = k_lin * goal_dist * forward_gain
-
-        ## New Stuff: ##################################
-        ## Test Logic here
-        elif self.state == "TEST":
-            self.get_logger().info('STATE: TEST')
-
-            ## Test Code Goes Here
-            cmd_vel = Twist()
-
-            #Initialize Start + target once
-            if self.test_start is None:
-                self.test_start = np.array([self.robot_world_x, self.robot_world_y])
-                self.test_target = self.test_start + np.array([1.0, 1.0])
-
-                self.get_logger().info(
-                    f"TEST Target set: x={self.test_target[0]:.2f}, y={self.test_target[1]:.2f}"
-                )
-
-            #Current Position
-            rx = self.robot_world_x
-            ry = self.robot_world_y
-
-            #Error in World frame
-            error_world = np.array([
-                self.test_target[0] - rx,
-                self.test_target[1] - ry,
-                0
-            ])
-
-            #Convert World -> Robot frame
-            R_wr = self.robot_world_R
-            R_rw = R_wr.T
-            error_robot = R_rw @ error_world
-
-            dist = np.sqrt(ex**2 + ey**2)
-
-            #Stop Condition
-            if dist < 0.2:
-                self.get_logger().info("TEST TARGET REACHED")
-                return Twist()
-
-            #Potential Control
-            cmd_vel.linear.x = self.kp_test * ex
-            cmd_vel.linear.y = slef.kp_test * ey
-            cmd_vel.angular.z = 0.0
-
-            return cmd_vel
-
-
-        # obstacle encountered
-        elif self.state == "AVOID":
-            self.get_logger().info('STATE: Avoid')
-            # obstacle avoided
-            if obs_pose is None:
-                self.state = "GOAL"
-                return Twist()
-
-            obs_angle = np.arctan2(oy, ox)
-            des_theta = obs_angle + np.pi/2
-
-            gain = 0.8 - obs_dist
-
-            # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * des_theta
-            cmd_vel.linear.y = 0.8 * gain * des_theta
-            cmd_vel.angular.z = 0.0
-
-            if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
-                self.state = "GOAL"
-
-        elif self.state == "RETURN":
-            
-            rx = self.robot_world_x
-            ry = self.robot_world_y
-            dx = self.start_pose[0] - rx
-            dy = self.start_pose[1] - ry
-
-            R_wr = self.robot_world_R
-            R_rw = R_wr.T                 
-
-            error_world = np.array([dx, dy, 0])
-            error_robot = R_rw @ error_world
-
-            dx_r = error_robot[0]
-            dy_r = error_robot[1]
-            
-            home_dist = np.sqrt(dx_r**2 + dy_r**2)
-            home_angle = np.arctan2(dy_r, dx_r) - np.pi/2
-
-            current_theta = np.arctan2(R_wr[1,0], R_wr[0,0])
-            angle_error = self.goal_angle + np.pi - current_theta
-
-            # wrap to [-pi, pi]
-            angle_error = (angle_error + 3*np.pi/4) % (2*np.pi) - np.pi
-
-            # avoid obstacle if needed
-            if obs_pose is not None:
-                obs_angle = np.arctan2(oy, ox)
-                if abs(obs_angle) < 0.4 and obs_dist < 0.8:
-                    self.state = "AVOIDR"
+        # publish the control command
+        self.pub_control_cmd.publish(cmd_vel)
     
-            if home_dist < 0.3:
-                self.state = "DONE"
-                return Twist()
-
-            # turn toward home if havent done so already
-            if (self.spin_flag == False) and (abs(angle_error) > 0.3):
-                #self.get_logger().info(f'Spinning with error: {angle_error}')
-                cmd_vel.linear.x = 0.0
-                cmd_vel.linear.y = 0.0
-                cmd_vel.angular.z = 1.5*home_angle
-            else:
-                # Goal Tracking
-                self.spin_flag = True
-                k = 0.5
-                forward_gain = min(0.2, 1.0 - abs(home_angle))
-                cmd_vel.linear.x = k*dx_r
-                cmd_vel.linear.y = k*dy_r
-                cmd_vel.angular.z = 0.0
-
-        elif self.state == "AVOIDR":
-            # obstacle avoided
-            if obs_pose is None:
-                self.state = "RETURN"
-                return Twist()
-            else:
-                obs_angle = np.arctan2(oy,ox)
-                
-            des_theta = obs_angle + np.pi/2
-
-            gain = 0.8 - obs_dist
-
-            # move perpendicular to obstacle
-            cmd_vel.linear.x = 0.8 * gain * des_theta
-            cmd_vel.linear.y = 0.8 * gain * des_theta
-            cmd_vel.angular.z = 0.0
-            
-            if abs(np.arctan2(oy, ox)) > 0.8 or obs_dist > 1.0:
-                self.state = "RETURN"
+    def controller(self):
+        self.get_logger().info("CONTROLLER ENTERED")
         
-        elif self.state == "DONE":
-            self.get_logger().info('STATE: Done')
-            cmd_vel.linear.x = 0.0
-            cmd_vel.linear.y = 0.0
-            cmd_vel.angular.z = 0.0
-            
+        cmd_vel = Twist()
+        
+        k_a = 0.5
+        k_r = 0.5
+
+        # potential field
+        cmd_vel.linear.x = k_a * self.attract_x + k_r * self.repel_x
+        cmd_vel.linear.y = k_a * self.attract_y + k_r * self.repel_y
+        cmd_vel.angular.z = 0.0
+
         # Saturation
         cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
         cmd_vel.linear.y = min(cmd_vel.linear.y, 0.5)
         cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
         
         return cmd_vel
-    
-        ############################################
 
 def main(args=None):
     # Initialize the rclpy library
