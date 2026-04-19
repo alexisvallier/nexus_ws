@@ -106,7 +106,7 @@ class LidarObjDetectionNode(Node):
                 pose = PoseStamped()
                 pose.pose.position.x = cp_robot[0]
                 pose.pose.position.y = cp_robot[1]
-                pose.pose.position.z = 0
+                pose.pose.position.z = 0.0
                 detected_obj_pose.poses.append(pose.pose)
 
         except TransformException as e:
