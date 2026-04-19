@@ -90,7 +90,7 @@ class LidarObjDetectionNode(Node):
         # may not need to change much
         try:
             # Transform the center point from the camera frame to the world frame
-            transform = self.tf_buffer.lookup_transform('base_footprint',points_msg.header.frame_id,rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
+            transform = self.tf_buffer.lookup_transform('base_footprint','laser_link',rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
             t_R = q2R(np.array([transform.transform.rotation.w,transform.transform.rotation.x,transform.transform.rotation.y,transform.transform.rotation.z]))
             
             #create a pose message for the detected object
