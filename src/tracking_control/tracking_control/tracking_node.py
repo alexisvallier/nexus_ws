@@ -73,8 +73,8 @@ class TrackingNode(Node):
         self.robot_world_z = None
         self.robot_world_R = None
 
-        self.goal_x = 0.0
-        self.goal_y = 0.0
+        self.goal_x = 1.0
+        self.goal_y = 1.0
 
         self.repel_x = 0.0
         self.repel_y = 0.0
@@ -180,7 +180,7 @@ class TrackingNode(Node):
         cmd_vel = Twist()
         
         k_a = 0.5
-        k_r = 0.5
+        k_r = 0.005
 
         # potential field
         cmd_vel.linear.x = k_a * self.attract_x + k_r * self.repel_x
