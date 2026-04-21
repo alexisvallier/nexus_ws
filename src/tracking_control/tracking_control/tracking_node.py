@@ -135,7 +135,7 @@ class TrackingNode(Node):
         try:
             # from base_footprint to odom
             self.get_logger().info('Trying transform for poses')
-            transform = self.tf_buffer.lookup_transform(odom_id, 'base_footprint', rclpy.time.Time())
+            transform = self.tf_buffer.lookup_transform('base_footprint', odom_id, rclpy.time.Time())
             self.robot_world_x = transform.transform.translation.x
             self.robot_world_y = transform.transform.translation.y
             self.robot_world_z = transform.transform.translation.z
