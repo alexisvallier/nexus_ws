@@ -159,13 +159,13 @@ class TrackingNode(Node):
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
 
+        if poses is None:
+            return
+
         #reached goal, stop the robot
         if np.linalg.norm([poses[0] - self.goal_x, poses[1] - self.goal_y]) < 0.2:
             cmd_vel = Twist()
             self.pub_control_cmd.publish(cmd_vel)
-
-        if poses is None:
-            return
 
         # set starting position
         if self.start_pose is None:
