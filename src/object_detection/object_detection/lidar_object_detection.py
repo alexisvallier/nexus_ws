@@ -105,7 +105,7 @@ class LidarObjDetectionNode(Node):
                 cp_robot = t_R@point_3d+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
                 pose = PoseStamped()
                 pose.pose.position.x = -cp_robot[0]
-                pose.pose.position.y = cp_robot[1]
+                pose.pose.position.y = -cp_robot[1]
                 pose.pose.position.z = 0.0
                 if (pose.pose.position.x >= 0.0):
                     detected_obj_pose.poses.append(pose.pose)
