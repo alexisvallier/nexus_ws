@@ -82,7 +82,7 @@ class TrackingNode(Node):
         self.attract_y = 0.0
 
         self.k_a = 0.5
-        self.k_r = 0.01
+        self.k_r = 0.1
 
         # State for control
         self.state = "TEST"
