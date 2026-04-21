@@ -134,7 +134,8 @@ class TrackingNode(Node):
         # Get the current robot pose
         try:
             # from base_footprint to odom
-            transform = self.tf_buffer.lookup_transform('base_footprint', odom_id, rclpy.time.Time())
+            self.get_logger().info('Trying transform for poses')
+            transform = self.tf_buffer.lookup_transform(odom_id, 'base_footprint', rclpy.time.Time())
             self.robot_world_x = transform.transform.translation.x
             self.robot_world_y = transform.transform.translation.y
             self.robot_world_z = transform.transform.translation.z
@@ -153,6 +154,9 @@ class TrackingNode(Node):
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
+
+        if poses is None:
+            return
 
         # set starting position
         if self.start_pose is None:
