@@ -82,7 +82,7 @@ class TrackingNode(Node):
         self.attract_y = 0.0
 
         self.k_a = 2.0
-        self.k_r = 0.005
+        self.k_r = 0.01
 
         # State for control
         self.state = "TEST"
@@ -158,6 +158,11 @@ class TrackingNode(Node):
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
+
+        #reached goal, stop the robot
+        if np.linalg.norm([poses[0] - self.goal_x, poses[1] - self.goal_y]) < 0.2:
+            cmd_vel = Twist()
+            self.pub_control_cmd.publish(cmd_vel)
 
         if poses is None:
             return
