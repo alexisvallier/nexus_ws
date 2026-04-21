@@ -197,8 +197,8 @@ class TrackingNode(Node):
         cmd_vel.angular.z = 0.0
 
         # Saturation
-        cmd_vel.linear.x = min(cmd_vel.linear.x, 0.5)
-        cmd_vel.linear.y = min(cmd_vel.linear.y, 0.5)
+        cmd_vel.linear.x = max(min(cmd_vel.linear.x, 0.5),-0.5)
+        cmd_vel.linear.y = max(min(cmd_vel.linear.y, 0.5),-0.5)
         cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
         
         return cmd_vel
