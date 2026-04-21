@@ -102,15 +102,15 @@ class LidarObjDetectionNode(Node):
             for i in range(points.shape[0]):
                 point = points[i]
                 point_3d = np.array([point[0], point[1], 0.0])
+                if point[0] <= 0.0 and (point[1] <= 0.3 and point[1] >= -0.3):
+                    continue
                 cp_robot = t_R@point_3d+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
                 pose = PoseStamped()
                 pose.pose.position.x = cp_robot[0]
                 pose.pose.position.y = cp_robot[1]
                 pose.pose.position.z = 0.0
-                if pose.pose.position.x <= 0.0 and (pose.pose.position.y <= 0.3 and pose.pose.position.y >= -0.3):
-                    continue
-                else:
-                    detected_obj_pose.poses.append(pose.pose)
+                
+                detected_obj_pose.poses.append(pose.pose)
 
         except TransformException as e:
             self.get_logger().error('Transform Error: {}'.format(e))
