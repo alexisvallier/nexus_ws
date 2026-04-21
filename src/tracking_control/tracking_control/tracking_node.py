@@ -139,7 +139,7 @@ class TrackingNode(Node):
         # Get the current robot pose
         try:
             # from base_footprint to odom
-            transform = self.tf_buffer.lookup_transform('base_footprint', odom_id, rclpy.time.Time())
+            transform = self.tf_buffer.lookup_transform(odom_id, 'base_footprint', rclpy.time.Time())
             self.robot_world_x = transform.transform.translation.x
             self.robot_world_y = transform.transform.translation.y
             self.robot_world_z = transform.transform.translation.z
@@ -192,8 +192,8 @@ class TrackingNode(Node):
         cmd_vel = Twist()
 
         # potential field
-        cmd_vel.linear.x = self.attract_x - self.repel_x
-        cmd_vel.linear.y = self.attract_y - self.repel_y
+        cmd_vel.linear.x = self.attract_x + self.repel_x
+        cmd_vel.linear.y = self.attract_y + self.repel_y
         cmd_vel.angular.z = 0.0
 
         # Saturation
