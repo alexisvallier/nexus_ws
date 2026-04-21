@@ -229,23 +229,42 @@ class TrackingNode(Node):
         return cmd_vel
 
     def plot_results(self):
-        plt.figure()
+        plt.figure(figsize=(8,6))
 
         #Robot Path - State Estimation
         plt.plot(self.history_x,self.history_y, label="Robot Path")
 
-        #Goal
+        #Start & Goal
+        plt.scatter(self.history_x[0], self.history_y[0], marker='o', label="Start")
         plt.scatter(self.goal_x, self.goal_y, marker='x', label="Goal")
 
         #Plot force vectors
-        step = max(1, len(self.history_x)//50)
+        step = max(1, len(self.history_x)//25)
+
+        hx = np.array(self.history_x)[::step]
+        hy = np.array(self.history_y)[::step]
+
+        fx = np.array(self.history_attract_x)[::step] + np.array(self.history_repel_x)[::step]        
+        fy = np.array(self.history_attract_y)[::step] + np.array(self.history_repel_y)[::step]
+
+        #Normailize
+        mag = np.sqrt(fx**2 + fy**2)
+        #avoid divide by zero
+        mag[mag == 0] = 1
+        fx_norm = fx / mag
+        fy_norm = fy / mag
+
+
+
 
         plt.quiver(
-            self.history_x[::step],
-            self.history_y[::step],
-            np.array(self.history_attract_x)[::step] + np.array(self.history_repel_x)[::step],
-            np.array(self.history_attract_y)[::step] + np.array(self.history_repel_y)[::step],
-            angles='xy', scale_units='xy', scale=1, label="Net Forces"
+            hx, hy,
+            fx_norm, fy_norm,
+            mag,
+            angles='xy',
+            scale_units='xy',
+            scale=15,
+            width=0.003
         )
 
         plt.xlabel("X")
@@ -253,6 +272,7 @@ class TrackingNode(Node):
         plt.title("State Estimation and Potential Field")
         plt.legend()
         plt.grid()
+        plt.axis('equal')
 
         plt.show()
 
