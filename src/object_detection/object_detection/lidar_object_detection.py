@@ -102,8 +102,6 @@ class LidarObjDetectionNode(Node):
             for i in range(points.shape[0]):
                 point = points[i]
                 point_3d = np.array([point[0], point[1], 0.0])
-                if point[0] <= 0.0 and (point[1] <= 0.3 and point[1] >= -0.3):
-                    continue
                 cp_robot = t_R@point_3d+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
                 pose = PoseStamped()
                 pose.pose.position.x = cp_robot[0]
