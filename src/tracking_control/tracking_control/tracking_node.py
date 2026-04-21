@@ -121,9 +121,6 @@ class TrackingNode(Node):
         for pose in msg.poses:
             # convert pose to numpy array
             obj_pose = np.array([pose.position.x, pose.position.y])
-            # only consider objects in front
-            if (obj_pose[0] <= 0.0):
-                continue
             # calculate repulsive force ( simple inverse square law )
             dist = np.linalg.norm(obj_pose)
             force_magnitude = 1.0 / (dist**2)

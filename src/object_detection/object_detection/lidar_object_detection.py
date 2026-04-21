@@ -107,8 +107,8 @@ class LidarObjDetectionNode(Node):
                 pose.pose.position.x = cp_robot[0]
                 pose.pose.position.y = cp_robot[1]
                 pose.pose.position.z = 0.0
-                
-                detected_obj_pose.poses.append(pose.pose)
+                if (pose.pose.position.x >= 0.0):
+                    detected_obj_pose.poses.append(pose.pose)
 
         except TransformException as e:
             self.get_logger().error('Transform Error: {}'.format(e))
