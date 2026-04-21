@@ -89,7 +89,7 @@ class LidarObjDetectionNode(Node):
 
         # may not need to change much
         try:
-            # Transform the center point from the camera frame to the world frame
+            # Transform the center point from the lidar frame to the world frame
             transform = self.tf_buffer.lookup_transform('base_footprint','laser_link',rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
             t_R = q2R(np.array([transform.transform.rotation.w,transform.transform.rotation.x,transform.transform.rotation.y,transform.transform.rotation.z]))
             
@@ -104,7 +104,7 @@ class LidarObjDetectionNode(Node):
                 point_3d = np.array([point[0], point[1], 0.0])
                 cp_robot = t_R@point_3d+np.array([transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z])
                 pose = PoseStamped()
-                pose.pose.position.x = cp_robot[0]
+                pose.pose.position.x = -cp_robot[0]
                 pose.pose.position.y = cp_robot[1]
                 pose.pose.position.z = 0.0
                 if (pose.pose.position.x >= 0.0):
