@@ -59,7 +59,7 @@ class LidarObjDetectionNode(Node):
         
         # Declare the parameters for the color detection
         self.declare_parameter('dist_low', 0.0)
-        self.declare_parameter('dist_high', 1.0)
+        self.declare_parameter('dist_high', 0.75)
         
         # Create a transform listener
         self.tf_buffer = Buffer()
