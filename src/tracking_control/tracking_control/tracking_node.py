@@ -4,6 +4,7 @@ from geometry_msgs.msg import Twist, PoseStamped, PoseArray
 from tf2_ros import TransformException, Buffer, TransformListener
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 ## Functions for quaternion and rotation matrix conversion
 ## The code is adapted from the general_robotics_toolbox package
@@ -85,7 +86,15 @@ class TrackingNode(Node):
         self.k_r = 0.005
 
         # State for control
-        self.state = "TEST"
+        #self.state = "TEST"
+        self.history_x = []
+        self.history_y = []
+
+        self.history_attract_x = []
+        self.history_attract_y = []
+
+        self.history_repel_x = []
+        self.history_repel_y = []
 
         ## New Stuff ################
         self.test_mode = True
@@ -151,8 +160,8 @@ class TrackingNode(Node):
     
     def timer_update(self):
         ## New Stuff
-        if self.test_mode:
-            self.state = "TEST"
+        #if self.test_mode:
+            #elf.state = "TEST"
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
@@ -164,6 +173,9 @@ class TrackingNode(Node):
         if np.linalg.norm([poses[0] - self.goal_x, poses[1] - self.goal_y]) < 0.2:
             cmd_vel = Twist()
             self.pub_control_cmd.publish(cmd_vel)
+
+            self.plot_results()
+            return
 
         # set starting position
         if self.start_pose is None:
@@ -179,6 +191,16 @@ class TrackingNode(Node):
         attractive_field = 0.5*(goal_dist**2)
         self.attract_x = self.k_a * attractive_field * np.cos(goal_angle)
         self.attract_y = self.k_a * attractive_field * np.sin(goal_angle)
+
+        self.history_x.append(poses[0])
+        self.history_y.append(poses[1])
+
+        self.history_attract_x.append(self.attract_x)
+        self.history_attract_y.append(self.attract_y)
+
+        self.history_repel_x.append(self.repel_x)
+        self.history_repel_y.append(self.repel_y)
+
 
         self.get_logger().info(f'####################################')
         self.get_logger().info(f'Angle: {goal_angle}')
@@ -205,6 +227,37 @@ class TrackingNode(Node):
         cmd_vel.angular.z = max(min(cmd_vel.angular.z, 1.2), -1.2)
         
         return cmd_vel
+
+    def plot_results(self):
+        plt.figure()
+
+        #Robot Path - State Estimation
+        plt.plot(self.history_x,self.history_y, label="Robot Path")
+
+        #Goal
+        plt.scatter(self.goal_x, self.goal_y, marker='x', label="Goal")
+
+        #Plot force vectors
+        step = max(1, len(self.history_x)//50)
+
+        plt.quiver(
+            self.history_x[::step],
+            self.history_y[::step],
+            np.array(self.history_attract_x)[::step] + np.array(self.history_repel_x)[::step],
+            np.array(self.history_attract_y)[::step] + np.array(self.history_repel_y)[::step],
+            angles='xy', scale_units='xy', scale=1, label="Net Forces"
+        )
+
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.title("State Estimation and Potential Field")
+        plt.legend()
+        plt.grid()
+
+        plt.show()
+
+
+
 
 def main(args=None):
     # Initialize the rclpy library
