@@ -1,18 +1,13 @@
-# S26_roboticsII
+# Nexus Team Final Project
+This code was based off the final code used for Lab 3.
 ROS2 Workspace for S26 RPI RoboticsII course.
-
-## Fork the repository
-
-Press the `Fork` on the page and fork the repo to your account. This will create a repository with exact same content in your github account.
 
 ## Cloning the repository 
 On your machine, open a new terminal.
 ```
 cd ~/codes
-git clone https://github.com/YOUR_ACCOUNT/S26_roboticsII_ws.git [team_name]_ws
+git clone https://github.com/alexisvallier/nexus_ws
 ```
-
-**Please see the instructions in the lab assignment document for full instructions on how to run this code and how to keep the files on the robot updated.** 
 
 ## Building the ROS2 workspace
 The step will build and ROS2 workspace and compile the packages after successfully moving this workspace to the robot.
@@ -33,18 +28,8 @@ cd ~/codes/[team_name]_ws
 colcon build
 ```
 
-**Important**: You have to compile the package **EVERYTIME** you modify the code, even the code is written in **PYTHON**. You can simply build one specific package using the following command. (So you don't have to compile ALL packages.)
-```
-colcon build --packages-select [package_name]
-```
-The [package_name] are for example, `object_detection`, `tracking_control`.
-
 ## Activate ROS2 environment
 Activate ROS2 environment to run ROS software
-
-**Important**: You have to activate ROS2 environment **EVERYTIME** you open a new terminal and run/access the docker container.
-
-The reason you don't need to do this while doing previous assignments is that there's an ROS activation command in `/root/.bashrc` in the docker container. Whenever a terminal is launched, it will exected this bash script once.
 
 **Docker**: Open/access a docker container via a terminal (SSH)
 ```
@@ -54,7 +39,7 @@ source install/setup.bash
 
 ## Launch tracking nodes!
 
-### Color Detection and Tracking Node
+### LiDAR Detection and Potential Field Node
 **Docker**: Open a terminal and access docker (via SSH). Remeber to **Activate ROS2 environment**.
 ```
 ros2 launch tracking_control tracking_color_object_launch.py
@@ -65,15 +50,10 @@ ros2 launch tracking_control tracking_color_object_launch.py
 ```
 ros2 run tracking_control joy_safety_ctrl
 ```
-### Launch the robot and camera
+### Launch the robot and lidar
 **Docker**: Open another terminal and access docker (via SSH).
-For the old camera model (astra pro, Robot 1~6)
 ```
-ros2 launch tracking_control car_camera_pro_bringup_launch.py
-```
-For the new camera model (astra pro plus, Robot 7~). **Unplug and plug** the camera cable if you haven't do so after booting up the robot. The image of the camera cable location is in Lab Assignmnet 1 description.
-```
-ros2 launch tracking_control car_camera_proplus_bringup_launch.py
+ros2 launch tracking_control lidar_obj_bringup_launch.py
 ```
 
 ## Robot Teleoeration
