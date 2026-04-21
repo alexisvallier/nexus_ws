@@ -81,7 +81,7 @@ class TrackingNode(Node):
         self.attract_x = 0.0
         self.attract_y = 0.0
 
-        self.k_a = 1
+        self.k_a = 2.0
         self.k_r = 0.005
 
         # State for control
@@ -123,7 +123,7 @@ class TrackingNode(Node):
             obj_pose = np.array([pose.position.x, pose.position.y, pose.position.z])
             # calculate repulsive force ( simple inverse square law )
             dist = np.linalg.norm(obj_pose)
-            if dist < 0.01:
+            if dist < 0.01 or dist > 1.0:
                 continue
             force_magnitude = 1.0 / (dist**2)
             force_direction = -obj_pose / dist
