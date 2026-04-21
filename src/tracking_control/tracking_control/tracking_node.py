@@ -171,10 +171,12 @@ class TrackingNode(Node):
         goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.robot_world_x, self.robot_world_y]))
         goal_angle = np.arctan2(self.goal_y - self.robot_world_y, self.goal_x - self.robot_world_x)
 
-        self.attract_x = goal_dist * np.cos(goal_angle)
-        self.attract_y = goal_dist * np.sin(goal_angle)
+        attractive_field = 0.5*(goal_dist**2)
+        self.attract_x = attractive_field * np.cos(goal_angle)
+        self.attract_y = sttractive_field * np.sin(goal_angle)
 
         self.get_logger().info(f'####################################')
+        self.get_logger().info(f'Angle: {goal_angle}')
         self.get_logger().info(f'Attractive Force: ({self.attract_x:.2f}, {self.attract_y:.2f})')
         self.get_logger().info(f'Repulsive Force: ({self.repel_x:.2f}, {self.repel_y:.2f})')
         self.get_logger().info(f'Current Pose: ({poses[0]:.2f}, {poses[1]:.2f})')
@@ -187,8 +189,8 @@ class TrackingNode(Node):
     def controller(self):
         cmd_vel = Twist()
         
-        k_a = 0.5
-        k_r = 0.05
+        k_a = 1
+        k_r = 0.005
 
         # potential field
         cmd_vel.linear.x = k_a * self.attract_x + k_r * self.repel_x
