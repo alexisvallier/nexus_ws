@@ -171,7 +171,7 @@ class TrackingNode(Node):
 
         # calculate the attractive potential from the goal
         goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.goal_x, self.goal_y]))
-        goal_angle = np.arctan2(self.goal_y - poses[0], self.goal_x - poses[1])
+        goal_angle = np.arctan2(self.goal_y - poses[1], self.goal_x - poses[0])
 
         attractive_field = 0.5*(goal_dist**2)
         self.attract_x = self.k_a * attractive_field * np.cos(goal_angle)
