@@ -71,7 +71,7 @@ class LidarObjDetectionNode(Node):
         self.sub_lidar = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
 
     def lidar_callback(self, points_msg):
-        self.get_logger().info('Received LiDAR Messages')
+        #self.get_logger().info('Received LiDAR Messages')
         # get ROS parameters
         param_dist_low = self.get_parameter('dist_low').value
         param_dist_high = self.get_parameter('dist_high').value

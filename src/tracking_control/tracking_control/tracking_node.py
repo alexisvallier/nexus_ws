@@ -113,6 +113,9 @@ class TrackingNode(Node):
 
         # calculate the repulsive force from the detected objects
         # for each pose, add x and y components to the repulsive force
+        self.repel_x = 0.0
+        self.repel_y = 0.0
+
         for pose in msg.poses:
             # convert pose to numpy array
             obj_pose = np.array([pose.position.x, pose.position.y, pose.position.z])
@@ -134,7 +137,6 @@ class TrackingNode(Node):
         # Get the current robot pose
         try:
             # from base_footprint to odom
-            self.get_logger().info('Trying transform for poses')
             transform = self.tf_buffer.lookup_transform('base_footprint', odom_id, rclpy.time.Time())
             self.robot_world_x = transform.transform.translation.x
             self.robot_world_y = transform.transform.translation.y
@@ -165,26 +167,28 @@ class TrackingNode(Node):
                 poses[1]
             ])
 
-        # TODO: account for transform error state
         # calculate the attractive potential from the goal
         goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.robot_world_x, self.robot_world_y]))
         goal_angle = np.arctan2(self.goal_y - self.robot_world_y, self.goal_x - self.robot_world_x)
 
         self.attract_x = goal_dist * np.cos(goal_angle)
         self.attract_y = goal_dist * np.sin(goal_angle)
-        
+
+        self.get_logger().info(f'####################################')
+        self.get_logger().info(f'Attractive Force: ({self.attract_x:.2f}, {self.attract_y:.2f})')
+        self.get_logger().info(f'Repulsive Force: ({self.repel_x:.2f}, {self.repel_y:.2f})')
+        self.get_logger().info(f'Current Pose: ({poses[0]:.2f}, {poses[1]:.2f})')
+
         cmd_vel = self.controller()
-        
+        self.get_logger().info(f'Control Command: ({cmd_vel.linear.x:.2f}, {cmd_vel.linear.y:.2f}, {cmd_vel.angular.z:.2f})')
         # publish the control command
         self.pub_control_cmd.publish(cmd_vel)
     
     def controller(self):
-        self.get_logger().info("CONTROLLER ENTERED")
-        
         cmd_vel = Twist()
         
         k_a = 0.5
-        k_r = 0.005
+        k_r = 0.05
 
         # potential field
         cmd_vel.linear.x = k_a * self.attract_x + k_r * self.repel_x
