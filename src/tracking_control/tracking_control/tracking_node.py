@@ -173,7 +173,7 @@ class TrackingNode(Node):
 
         attractive_field = 0.5*(goal_dist**2)
         self.attract_x = attractive_field * np.cos(goal_angle)
-        self.attract_y = sttractive_field * np.sin(goal_angle)
+        self.attract_y = attractive_field * np.sin(goal_angle)
 
         self.get_logger().info(f'####################################')
         self.get_logger().info(f'Angle: {goal_angle}')
