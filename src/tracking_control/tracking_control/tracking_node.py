@@ -64,8 +64,7 @@ class TrackingNode(Node):
     def __init__(self):
         super().__init__('tracking_node')
         self.get_logger().info('Tracking Node Started')
-        
-        self.goal_pose = None
+    
         self.start_pose = None
 
         self.robot_world_x = None
@@ -81,6 +80,9 @@ class TrackingNode(Node):
 
         self.attract_x = 0.0
         self.attract_y = 0.0
+
+        self.k_a = 1
+        self.k_r = 0.005
 
         # State for control
         self.state = "TEST"
@@ -126,8 +128,8 @@ class TrackingNode(Node):
             force_magnitude = 1.0 / (dist**2)
             force_direction = -obj_pose / dist
             force = force_magnitude * force_direction
-            self.repel_x += force[0]
-            self.repel_y += force[1]
+            self.repel_x += self.k_r * force[0]
+            self.repel_y += self.k_r * force[1]
         
     # not sure whether need this funciton anymore
     def get_current_poses(self):
@@ -168,12 +170,12 @@ class TrackingNode(Node):
             ])
 
         # calculate the attractive potential from the goal
-        goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.robot_world_x, self.robot_world_y]))
-        goal_angle = np.arctan2(self.goal_y - self.robot_world_y, self.goal_x - self.robot_world_x)
+        goal_dist = np.linalg.norm(np.array([poses[0], poses[1]]) - np.array([self.goal_x, self.goal_y]))
+        goal_angle = np.arctan2(self.goal_y - poses[0], self.goal_x - poses[1])
 
         attractive_field = 0.5*(goal_dist**2)
-        self.attract_x = attractive_field * np.cos(goal_angle)
-        self.attract_y = attractive_field * np.sin(goal_angle)
+        self.attract_x = self.k_a * attractive_field * np.cos(goal_angle)
+        self.attract_y = self.k_a * attractive_field * np.sin(goal_angle)
 
         self.get_logger().info(f'####################################')
         self.get_logger().info(f'Angle: {goal_angle}')
@@ -188,13 +190,10 @@ class TrackingNode(Node):
     
     def controller(self):
         cmd_vel = Twist()
-        
-        k_a = 1
-        k_r = 0.005
 
         # potential field
-        cmd_vel.linear.x = k_a * self.attract_x + k_r * self.repel_x
-        cmd_vel.linear.y = k_a * self.attract_y + k_r * self.repel_y
+        cmd_vel.linear.x = self.attract_x + self.repel_x
+        cmd_vel.linear.y = self.attract_y + self.repel_y
         cmd_vel.angular.z = 0.0
 
         # Saturation
