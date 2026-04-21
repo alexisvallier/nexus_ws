@@ -123,7 +123,7 @@ class TrackingNode(Node):
             obj_pose = np.array([pose.position.x, pose.position.y, pose.position.z])
             # calculate repulsive force ( simple inverse square law )
             dist = np.linalg.norm(obj_pose)
-            if dist < 0.01 or dist > 1.0:
+            if dist < 0.1 or dist > 1.0:
                 continue
             force_magnitude = 1.0 / (dist**2)
             force_direction = -obj_pose / dist
@@ -192,8 +192,8 @@ class TrackingNode(Node):
         cmd_vel = Twist()
 
         # potential field
-        cmd_vel.linear.x = self.attract_x + self.repel_x
-        cmd_vel.linear.y = self.attract_y + self.repel_y
+        cmd_vel.linear.x = self.attract_x - self.repel_x
+        cmd_vel.linear.y = self.attract_y - self.repel_y
         cmd_vel.angular.z = 0.0
 
         # Saturation
