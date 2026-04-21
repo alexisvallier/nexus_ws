@@ -197,8 +197,8 @@ class TrackingNode(Node):
         cmd_vel = Twist()
 
         # potential field
-        cmd_vel.linear.x = -1*(self.attract_x + self.repel_x)
-        cmd_vel.linear.y = -1*(self.attract_y + self.repel_y)
+        cmd_vel.linear.x = self.attract_x + self.repel_x
+        cmd_vel.linear.y = self.attract_y + self.repel_y
         cmd_vel.angular.z = 0.0
 
         # Saturation
