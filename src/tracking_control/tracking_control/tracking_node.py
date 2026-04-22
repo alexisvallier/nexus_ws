@@ -271,7 +271,7 @@ class TrackingNode(Node):
         plt.xlabel("Y")
         plt.ylabel("X")
         plt.title("State Estimation and Potential Field")
-        plt.invert_xaxis()
+        plt.gca().invert_xaxis()
         plt.legend()
         plt.grid()
         plt.axis('equal')
