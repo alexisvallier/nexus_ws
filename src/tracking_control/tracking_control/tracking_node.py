@@ -170,7 +170,7 @@ class TrackingNode(Node):
             return
 
         #reached goal, stop the robot
-        if np.linalg.norm([poses[0] - self.goal_x, poses[1] - self.goal_y]) < 0.2:
+        if np.linalg.norm([poses[0] - self.goal_x, poses[1] - self.goal_y]) < 0.1:
             cmd_vel = Twist()
             self.pub_control_cmd.publish(cmd_vel)
 
@@ -216,6 +216,10 @@ class TrackingNode(Node):
     def controller(self):
         cmd_vel = Twist()
 
+        if (self.repel_x == 0.0) and (self.repel_y == 0.0):
+            self.attract_x *= 2
+            self.attract_y *= 2
+        
         # potential field
         cmd_vel.linear.x = self.attract_x + self.repel_x
         cmd_vel.linear.y = self.attract_y + self.repel_y
