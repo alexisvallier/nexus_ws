@@ -73,8 +73,8 @@ class TrackingNode(Node):
         self.robot_world_z = None
         self.robot_world_R = None
 
-        self.goal_x = 1.0
-        self.goal_y = 1.0
+        self.goal_x = 3.0
+        self.goal_y = 0.0
 
         self.repel_x = 0.0
         self.repel_y = 0.0
