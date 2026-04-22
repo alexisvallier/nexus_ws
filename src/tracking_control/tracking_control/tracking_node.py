@@ -232,11 +232,11 @@ class TrackingNode(Node):
         plt.figure(figsize=(8,6))
 
         #Robot Path - State Estimation
-        plt.plot(self.history_x,self.history_y, label="Robot Path")
+        plt.plot(self.history_y,self.history_x, label="Robot Path")
 
         #Start & Goal
-        plt.scatter(self.history_x[0], self.history_y[0], marker='o', label="Start")
-        plt.scatter(self.goal_x, self.goal_y, marker='x', label="Goal")
+        plt.scatter(self.history_y[0], self.history_x[0], marker='o', label="Start")
+        plt.scatter(self.goal_y, self.goal_x, marker='x', label="Goal")
 
         #Plot force vectors
         step = max(1, len(self.history_x)//25)
@@ -254,12 +254,9 @@ class TrackingNode(Node):
         fx_norm = fx / mag
         fy_norm = fy / mag
 
-
-
-
         plt.quiver(
-            hx, hy,
-            fx_norm, fy_norm,
+            hy, hx,
+            fy_norm, fx_norm,
             mag,
             angles='xy',
             scale_units='xy',
@@ -267,8 +264,8 @@ class TrackingNode(Node):
             width=0.003
         )
 
-        plt.xlabel("X")
-        plt.ylabel("Y")
+        plt.xlabel("Y")
+        plt.ylabel("X")
         plt.title("State Estimation and Potential Field")
         plt.legend()
         plt.grid()
