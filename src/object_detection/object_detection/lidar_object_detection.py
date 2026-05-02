@@ -86,8 +86,7 @@ class LidarObjDetectionNode(Node):
         x = valid_ranges * np.cos(valid_angles)
         y = valid_ranges * np.sin(valid_angles)
         points = np.vstack((x, y)).T
-
-        # may not need to change much
+        
         try:
             # Transform the center point from the lidar frame to the world frame
             transform = self.tf_buffer.lookup_transform('base_footprint','laser_link',rclpy.time.Time(),rclpy.duration.Duration(seconds=0.2))
@@ -114,7 +113,7 @@ class LidarObjDetectionNode(Node):
             self.get_logger().error('Transform Error: {}'.format(e))
             return
         
-        # Publish the detected object
+        # Publish the detected points
         self.pub_detected_obj.publish(detected_obj_pose)
         
 def main(args=None):
