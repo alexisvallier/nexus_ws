@@ -73,20 +73,22 @@ class TrackingNode(Node):
         self.robot_world_z = None
         self.robot_world_R = None
 
+        # set goal position from starting point here
         self.goal_x = 3.0
         self.goal_y = 0.0
 
+        # variables for potential field values
         self.repel_x = 0.0
         self.repel_y = 0.0
 
         self.attract_x = 0.0
         self.attract_y = 0.0
 
+        # weighting values for attractive vs. repulsive forces
         self.k_a = 1.0
         self.k_r = 0.005
 
-        # State for control
-        #self.state = "TEST"
+        # variables for plotting
         self.history_x = []
         self.history_y = []
 
@@ -95,13 +97,6 @@ class TrackingNode(Node):
 
         self.history_repel_x = []
         self.history_repel_y = []
-
-        ## New Stuff ################
-        self.test_mode = True
-        self.test_target = None
-        self.test_start = None
-        # Simple P gain
-        self.kp_test = 0.3
         
         # ROS parameters
         self.declare_parameter('world_frame_id', 'odom')
@@ -138,7 +133,7 @@ class TrackingNode(Node):
             self.repel_x += self.k_r * force[0]
             self.repel_y += self.k_r * force[1]
         
-    # not sure whether need this funciton anymore
+    # function to get robot position in world frame
     def get_current_poses(self):
         
         odom_id = self.get_parameter('world_frame_id').get_parameter_value().string_value
@@ -158,10 +153,8 @@ class TrackingNode(Node):
         
         return [self.robot_world_x, self.robot_world_y, self.robot_world_z, self.robot_world_R]
     
+    # function for updating command velocity
     def timer_update(self):
-        ## New Stuff
-        #if self.test_mode:
-            #elf.state = "TEST"
         
         # Get the current object pose in the robot base_footprint frame
         poses = self.get_current_poses()
@@ -201,18 +194,12 @@ class TrackingNode(Node):
         self.history_repel_x.append(self.repel_x)
         self.history_repel_y.append(self.repel_y)
 
-
-        self.get_logger().info(f'####################################')
-        self.get_logger().info(f'Angle: {goal_angle}')
-        self.get_logger().info(f'Attractive Force: ({self.attract_x:.2f}, {self.attract_y:.2f})')
-        self.get_logger().info(f'Repulsive Force: ({self.repel_x:.2f}, {self.repel_y:.2f})')
-        self.get_logger().info(f'Current Pose: ({poses[0]:.2f}, {poses[1]:.2f})')
-
         cmd_vel = self.controller()
-        self.get_logger().info(f'Control Command: ({cmd_vel.linear.x:.2f}, {cmd_vel.linear.y:.2f}, {cmd_vel.angular.z:.2f})')
+
         # publish the control command
         self.pub_control_cmd.publish(cmd_vel)
     
+    # function to sum the attractive and repulsive forces and calculate the command velocity
     def controller(self):
         cmd_vel = Twist()
 
@@ -232,6 +219,7 @@ class TrackingNode(Node):
         
         return cmd_vel
 
+    # function for plotting state estimation and potential field vectors after reaching the goal
     def plot_results(self):
         plt.figure(figsize=(8,6))
 
@@ -277,9 +265,6 @@ class TrackingNode(Node):
         plt.axis('equal')
 
         plt.show()
-
-
-
 
 def main(args=None):
     # Initialize the rclpy library
